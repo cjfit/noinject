@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NoInject Settings</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #F9FAFB;
+      color: #111827;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .header {
+      margin-bottom: 32px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .subtitle {
+      color: #6B7280;
+      font-size: 16px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .card h2 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #111827;
+    }
+
+    .setting-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 0;
+      border-bottom: 1px solid #E5E7EB;
+    }
+
+    .setting-row:last-child {
+      border-bottom: none;
+    }
+
+    .setting-info h3 {
+      font-size: 15px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .setting-info p {
+      font-size: 13px;
+      color: #6B7280;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 48px;
+      height: 24px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #D1D5DB;
+      transition: 0.3s;
+      border-radius: 24px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: #10B981;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(24px);
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #1F2937;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #111827;
+    }
+
+    .btn-secondary {
+      background: #F3F4F6;
+      color: #374151;
+    }
+
+    .btn-secondary:hover {
+      background: #E5E7EB;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 40px;
+      color: #6B7280;
+      font-size: 14px;
+    }
+
+    .status-message {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-top: 16px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .status-message.success {
+      background: #D1FAE5;
+      color: #059669;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L3 6v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V6l-9-4z"/>
+        </svg>
+        NoInject Settings
+      </h1>
+      <p class="subtitle">Configure your prompt injection protection</p>
+    </div>
+
+    <div class="card">
+      <h2>Detection Settings</h2>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <h3>Auto-scan pages</h3>
+          <p>Automatically scan pages when they load</p>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="autoScan" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <h3>Show warning banner</h3>
+          <p>Display warning banner on pages with detected threats</p>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="showBanner" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <h3>Scan on content changes</h3>
+          <p>Re-scan when page content updates dynamically</p>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="scanChanges" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Advanced</h2>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <h3>Use AI detection</h3>
+          <p>Use on-device AI for more accurate detection (requires Gemini Nano)</p>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="useAI" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <h3>Pattern-based fallback</h3>
+          <p>Use pattern matching when AI is unavailable</p>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="useFallback" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>About</h2>
+      <p style="margin-bottom: 16px; color: #6B7280; line-height: 1.6;">
+        NoInject protects you from prompt injection attacks on websites. It uses on-device AI (Gemini Nano)
+        to analyze web content and detect malicious instructions that could manipulate AI systems.
+      </p>
+      <p style="color: #6B7280; font-size: 14px;">
+        Version 1.0.0 • Built with Chrome's Prompt API
+      </p>
+    </div>
+
+    <div id="statusMessage" class="status-message"></div>
+
+    <div class="footer">
+      <p>NoInject • Prompt Injection Protection for Chrome</p>
+    </div>
+  </div>
+
+  <script src="settings.js"></script>
+</body>
+</html>
