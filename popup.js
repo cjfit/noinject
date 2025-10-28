@@ -19,12 +19,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Load status
   async function loadStatus() {
     try {
-      const response = await chrome.tabs.sendMessage(tab.id, { action: 'getStatus' });
+      // Get status from storage (where background script stores it)
+      const storageKey = `detection_${tab.id}`;
+      const data = await chrome.storage.local.get([storageKey]);
 
-      if (response && response.result) {
-        displayResult(response.result);
+      if (data[storageKey] && data[storageKey].result) {
+        displayResult(data[storageKey].result);
       } else {
-        // No result yet, show scanning state
+        // No result yet, show scanning state or safe default
         showScanning();
       }
     } catch (error) {
@@ -59,6 +61,38 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Display result
   function displayResult(result) {
+    // Handle timeout cases
+    if (result.judgment === 'TIMEOUT' || result.method === 'timeout') {
+      statusIcon.className = 'status-icon loading';
+      statusIcon.innerHTML = `
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      `;
+      statusTitle.textContent = 'Scan Timed Out';
+      statusDescription.textContent = 'Analysis took too long. Prompt API may still be downloading.';
+
+      if (result.analysis) {
+        analysisDetails.classList.remove('hidden');
+        analysisText.textContent = result.analysis;
+        analysisMethod.textContent = 'Timeout';
+      }
+      return;
+    }
+
+    // Handle error cases
+    if (result.judgment === 'ERROR' || result.method === 'error') {
+      showError();
+      if (result.analysis) {
+        analysisDetails.classList.remove('hidden');
+        analysisText.textContent = result.analysis;
+        analysisMethod.textContent = 'Error';
+      }
+      return;
+    }
+
     if (result.isMalicious) {
       // Malicious content detected
       statusIcon.className = 'status-icon danger';
@@ -89,7 +123,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       analysisText.textContent = result.analysis;
 
       // Update metadata
-      const methodText = result.method === 'ai' ? 'AI-Powered Detection' : 'Pattern Matching';
+      const methodText = result.method === 'ai' ? 'AI-Powered Detection' :
+                        result.method === 'timeout' ? 'Timeout' :
+                        result.method === 'error' ? 'Error' : 'Pattern Matching';
       analysisMethod.textContent = methodText;
 
       if (result.contentLength) {

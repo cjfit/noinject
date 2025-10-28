@@ -1,6 +1,8 @@
 // NoInject Content Script
 // Extracts visible page content and sends it for analysis
 
+console.log('[NoInject] Content script loaded and running');
+
 // Extract all visible text content from the page
 function extractVisibleContent() {
   // Get all text from the body, excluding scripts, styles, and hidden elements
@@ -61,10 +63,37 @@ function extractVisibleContent() {
 }
 
 // Show warning banner if malicious content detected
-function showWarningBanner() {
+function showWarningBanner(analysisResult) {
   // Check if banner already exists
   if (document.getElementById('noinject-warning-banner')) {
     return;
+  }
+
+  // Parse the AI analysis to extract specific findings
+  const analysis = analysisResult.analysis || '';
+
+  // Split analysis into sentences or key points
+  const findings = analysis
+    .split(/[.!]\s+/)
+    .filter(sentence => sentence.trim().length > 20)
+    .slice(0, 3)
+    .map(finding => finding.trim());
+
+  // Build findings HTML
+  let findingsHTML = '';
+  if (findings.length > 0) {
+    findingsHTML = `
+      <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.2);">
+        <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px; opacity: 0.9;">
+          AI Detected:
+        </div>
+        <ul style="margin: 0; padding-left: 20px; font-size: 12px; opacity: 0.95; line-height: 1.6;">
+          ${findings.map(finding => `
+            <li style="margin-bottom: 6px;">${finding}</li>
+          `).join('')}
+        </ul>
+      </div>
+    `;
   }
 
   const banner = document.createElement('div');
@@ -82,40 +111,46 @@ function showWarningBanner() {
       font-size: 14px;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       z-index: 2147483647;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
       animation: slideDown 0.3s ease-out;
+      max-height: 400px;
+      overflow-y: auto;
     ">
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <div style="display: flex; align-items: flex-start; gap: 12px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; margin-top: 2px;">
           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
           <line x1="12" y1="9" x2="12" y2="13"></line>
           <line x1="12" y1="17" x2="12.01" y2="17"></line>
         </svg>
-        <div>
-          <div style="font-weight: 600; margin-bottom: 2px;">
-            Prompt Injection Detected
+        <div style="flex: 1;">
+          <div style="display: flex; justify-content: space-between; align-items: start;">
+            <div>
+              <div style="font-weight: 600; margin-bottom: 4px;">
+                Prompt Injection Detected
+              </div>
+              <div style="font-size: 13px; opacity: 0.95;">
+                This page contains suspicious content that may attempt to manipulate AI systems. Exercise caution when using AI tools on this site.
+              </div>
+            </div>
+            <button id="noinject-close-banner" style="
+              background: rgba(255, 255, 255, 0.2);
+              border: none;
+              color: white;
+              padding: 6px 12px;
+              border-radius: 6px;
+              cursor: pointer;
+              font-size: 12px;
+              font-weight: 500;
+              transition: background 0.2s;
+              flex-shrink: 0;
+              margin-left: 12px;
+            " onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+               onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+              Dismiss
+            </button>
           </div>
-          <div style="font-size: 13px; opacity: 0.95;">
-            This page contains suspicious content that may attempt to manipulate AI systems. Exercise caution when using AI tools on this site.
-          </div>
+          ${findingsHTML}
         </div>
       </div>
-      <button id="noinject-close-banner" style="
-        background: rgba(255, 255, 255, 0.2);
-        border: none;
-        color: white;
-        padding: 8px 16px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 13px;
-        font-weight: 500;
-        transition: background 0.2s;
-      " onmouseover="this.style.background='rgba(255,255,255,0.3)'"
-         onmouseout="this.style.background='rgba(255,255,255,0.2)'">
-        Dismiss
-      </button>
     </div>
     <style>
       @keyframes slideDown {
@@ -127,6 +162,20 @@ function showWarningBanner() {
           transform: translateY(0);
           opacity: 1;
         }
+      }
+      #noinject-warning-banner::-webkit-scrollbar {
+        width: 8px;
+      }
+      #noinject-warning-banner::-webkit-scrollbar-track {
+        background: rgba(0,0,0,0.1);
+        border-radius: 4px;
+      }
+      #noinject-warning-banner::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.3);
+        border-radius: 4px;
+      }
+      #noinject-warning-banner::-webkit-scrollbar-thumb:hover {
+        background: rgba(255,255,255,0.4);
       }
     </style>
   `;
@@ -145,11 +194,13 @@ async function analyzePage() {
     const content = extractVisibleContent();
 
     if (!content || content.length < 50) {
-      console.log('Not enough content to analyze');
+      console.log('[NoInject] Not enough content to analyze (< 50 chars)');
       return;
     }
 
-    console.log(`Analyzing ${content.length} characters of content...`);
+    console.log(`[NoInject] Starting analysis of ${content.length} characters...`);
+    console.log(`[NoInject] Content preview:`, content.substring(0, 200) + '...');
+    console.log(`[NoInject] FULL CONTENT FOR DEBUGGING:`, content);
 
     // Send content to background script for analysis
     const response = await chrome.runtime.sendMessage({
@@ -157,15 +208,29 @@ async function analyzePage() {
       content: content
     });
 
-    console.log('Analysis complete:', response);
+    console.log('[NoInject] Analysis complete:', {
+      isMalicious: response.isMalicious,
+      method: response.method,
+      contentLength: response.contentLength,
+      judgment: response.judgment
+    });
+
+    if (response.isMalicious) {
+      console.log('[NoInject] THREAT DETECTED on this page:', {
+        analysis: response.analysis,
+        judgment: response.judgment
+      });
+    } else {
+      console.log('[NoInject] Page is SAFE - No threats detected');
+    }
 
     // Show warning banner if malicious
     if (response && response.isMalicious) {
-      showWarningBanner();
+      showWarningBanner(response);
     }
 
   } catch (error) {
-    console.error('Failed to analyze page:', error);
+    console.error('[NoInject] Failed to analyze page:', error);
   }
 }
 
