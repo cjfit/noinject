@@ -74,14 +74,14 @@ function showWarningBanner(analysisResult) {
     return;
   }
 
-  // Parse the AI analysis to extract specific findings
-  const analysis = analysisResult.analysis || '';
+  // Use the judge's detailed reasoning (judgment field) instead of generic analysis
+  const judgmentText = analysisResult.judgment || analysisResult.analysis || '';
 
-  // Split analysis into sentences or key points
-  const findings = analysis
+  // Split judgment into sentences or key points
+  const findings = judgmentText
     .split(/[.!]\s+/)
     .filter(sentence => sentence.trim().length > 20)
-    .slice(0, 3)
+    .slice(0, 4)  // Show up to 4 findings
     .map(finding => finding.trim());
 
   // Build findings HTML

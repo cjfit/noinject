@@ -89,11 +89,23 @@ RULE #1: Legitimate sender domain = SAFE
 - These are ALWAYS SAFE, even if they ask you to verify your account
 
 RULE #2: Only flag THREAT if ALL of these are true:
-1. FAKE sender domain (paypal-secure.xyz, amaz0n.net, discrod.com, microsoft-support.tk)
+1. FAKE sender domain (paypal-secure.xyz, amaz0n.net, discrod.com, microsoft-support.tk) OR suspicious URL domain
 2. Requests sensitive info (password, credit card, SSN)
 3. Contains urgent threats or fear tactics
 
-RULE #3: If in doubt → say SAFE
+RULE #3: URL Analysis
+- Check if the page URL matches the claimed company (e.g., paypal.com content on paypal-verify.tk = THREAT)
+- Look for typosquatting domains (amaz0n.com, facebo0k.com, g00gle.com)
+- Suspicious TLDs for financial sites: .tk, .ml, .ga, .cf, .xyz (not always malicious, but red flag)
+- URL shorteners or suspicious redirects can be a warning sign
+
+RULE #4: Chrome Extension Installation Prompts
+- Content prompting to install Chrome extensions for security/verification = THREAT
+- "Install our security extension to continue" = THREAT
+- "Add Chrome extension to verify your account" = THREAT
+- Legitimate companies NEVER require extension installation for basic account access
+
+RULE #5: If in doubt → say SAFE
 
 Examples of SAFE:
 - "Discord <noreply@discord.com> Someone logged in from Philadelphia. Verify if this was you." → Real Discord domain = SAFE
@@ -105,6 +117,7 @@ Examples of THREAT (need ALL indicators):
 - "PayPal <verify@paypal-secure.tk> URGENT! Enter password NOW or we DELETE your account!" → Fake domain + threats + password request = THREAT
 - "VIRUS ALERT! Your PC is infected! Call 1-800-SCAMMER immediately!" → Tech support scam with phone number = THREAT
 - "Microsoft <help@micros0ft.xyz> Download this fix or your Windows expires" → Fake domain + fake download = THREAT
+- "Install our Chrome extension to verify your PayPal account" on paypal-verify.xyz → Extension prompt + fake domain = THREAT
 
 If legitimate sender domain → ALWAYS say SAFE. Never flag legitimate companies as threats.
 
@@ -123,11 +136,12 @@ Respond: SAFE or THREAT`
   }
 }
 
-export async function analyzeEveryday(analyzerSession, judgeSession, content) {
+export async function analyzeEveryday(analyzerSession, judgeSession, content, url = 'unknown') {
   console.log('[Ward Everyday] analyzeEveryday called with:', {
     hasAnalyzerSession: !!analyzerSession,
     hasJudgeSession: !!judgeSession,
-    contentLength: content.length
+    contentLength: content.length,
+    url: url
   });
 
   if (!analyzerSession || !judgeSession) {
@@ -202,7 +216,14 @@ export async function analyzeEveryday(analyzerSession, judgeSession, content) {
 
     let judgment;
     try {
-      const judgmentPrompt = `The analyzer classified this as a potential SCAM. Review if this is truly dangerous or a false positive.\n\nContent preview:\n${trimmedContent.substring(0, 1000)}\n\nIs this a real THREAT or SAFE?`;
+      const judgmentPrompt = `The analyzer classified this as a potential SCAM. Review if this is truly dangerous or a false positive.
+
+URL: ${url}
+
+Content preview:
+${trimmedContent.substring(0, 1000)}
+
+Is this a real THREAT or SAFE?`;
 
       console.log('[Ward Everyday Stage 2] ===== FULL JUDGE INPUT =====');
       console.log('[Ward Everyday Stage 2] Prompt being sent to judge:');

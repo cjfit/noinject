@@ -17,6 +17,7 @@ let everydaySessions = { analyzerSession: null, judgeSession: null };
 let aiPowerUserSessions = { aiSession: null, judgeSession: null };
 let isAiAvailable = false;
 const DETECTION_CACHE = new Map(); // Cache results per URL
+const ACTIVE_ANALYSES = new Map(); // Track ongoing analyses by tabId
 
 // Initialize AI based on current mode
 async function initializeAI() {
@@ -73,7 +74,7 @@ async function initializeAI() {
 }
 
 // Analyze content using current mode
-async function analyzeContent(content) {
+async function analyzeContent(content, url = 'unknown') {
   if (!isAiAvailable) {
     console.error('[Ward] AI not available - cannot analyze');
     return {
@@ -94,12 +95,14 @@ async function analyzeContent(content) {
       console.log('[Ward] Passing to analyzeEveryday:', {
         hasAnalyzer: !!everydaySessions.analyzerSession,
         hasJudge: !!everydaySessions.judgeSession,
-        contentLength: content.length
+        contentLength: content.length,
+        url: url
       });
       const result = await analyzeEveryday(
         everydaySessions.analyzerSession,
         everydaySessions.judgeSession,
-        content
+        content,
+        url
       );
       console.log('[Ward] analyzeEveryday returned:', result);
       return result;
@@ -235,12 +238,31 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return;
       }
 
+      // Cancel any existing analysis for this tab
+      const tabId = sender.tab.id;
+      if (ACTIVE_ANALYSES.has(tabId)) {
+        console.log(`[Ward] Cancelling previous analysis for tab ${tabId}`);
+        const previousAnalysis = ACTIVE_ANALYSES.get(tabId);
+        previousAnalysis.cancelled = true;
+        clearTimeout(previousAnalysis.timeout);
+      }
+
       console.log('[Ward] Starting fresh analysis (not cached) for URL:', url);
 
+      // Create cancellable analysis tracker
+      const analysisTracker = {
+        cancelled: false,
+        timeout: null,
+        startTime: Date.now()
+      };
+      ACTIVE_ANALYSES.set(tabId, analysisTracker);
+
       // Analyze the content with overall timeout
-      const analysisStart = Date.now();
-      const overallTimeout = setTimeout(() => {
+      analysisTracker.timeout = setTimeout(() => {
+        if (analysisTracker.cancelled) return;
+
         console.error('[Ward] Overall analysis timeout - taking too long');
+        ACTIVE_ANALYSES.delete(tabId);
         sendResponse({
           error: 'Analysis timeout',
           isMalicious: false,
@@ -252,9 +274,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
       }, 60000); // 60 second overall timeout
 
-      analyzeContent(content).then(result => {
-        clearTimeout(overallTimeout);
-        const duration = Date.now() - analysisStart;
+      analyzeContent(content, url).then(result => {
+        // Check if analysis was cancelled while running
+        if (analysisTracker.cancelled) {
+          console.log(`[Ward] Analysis cancelled for tab ${tabId}, discarding results`);
+          return;
+        }
+
+        clearTimeout(analysisTracker.timeout);
+        ACTIVE_ANALYSES.delete(tabId);
+        const duration = Date.now() - analysisTracker.startTime;
         console.log(`[Ward] Analysis completed in ${duration}ms`);
 
         // Cache the result
@@ -274,7 +303,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         sendResponse(result);
       }).catch(error => {
-        clearTimeout(overallTimeout);
+        if (analysisTracker.cancelled) {
+          console.log(`[Ward] Analysis cancelled for tab ${tabId}, ignoring error`);
+          return;
+        }
+
+        clearTimeout(analysisTracker.timeout);
+        ACTIVE_ANALYSES.delete(tabId);
         console.error('[Ward] Analysis error:', error);
         sendResponse({
           error: error.message,
@@ -364,6 +399,15 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     }
 
     console.log('[Ward] Page loading detected:', tab.url);
+
+    // Cancel any ongoing analysis for this tab
+    if (ACTIVE_ANALYSES.has(tabId)) {
+      console.log(`[Ward] Cancelling ongoing analysis for tab ${tabId} due to navigation`);
+      const analysis = ACTIVE_ANALYSES.get(tabId);
+      analysis.cancelled = true;
+      clearTimeout(analysis.timeout);
+      ACTIVE_ANALYSES.delete(tabId);
+    }
 
     // Clear stored detection result for this tab so popup shows "Scanning..." state
     chrome.storage.local.remove([`detection_${tabId}`]);
