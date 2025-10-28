@@ -1,7 +1,7 @@
-// NoInject Content Script
+// Ward Content Script
 // Extracts visible page content and sends it for analysis
 
-console.log('[NoInject] Content script loaded and running');
+console.log('[Ward] Content script loaded and running');
 
 // Extract all visible text content from the page
 function extractVisibleContent() {
@@ -65,7 +65,7 @@ function extractVisibleContent() {
 // Show warning banner if malicious content detected
 function showWarningBanner(analysisResult) {
   // Check if banner already exists
-  if (document.getElementById('noinject-warning-banner')) {
+  if (document.getElementById('ward-warning-banner')) {
     return;
   }
 
@@ -97,7 +97,7 @@ function showWarningBanner(analysisResult) {
   }
 
   const banner = document.createElement('div');
-  banner.id = 'noinject-warning-banner';
+  banner.id = 'ward-warning-banner';
   banner.innerHTML = `
     <div style="
       position: fixed;
@@ -125,13 +125,13 @@ function showWarningBanner(analysisResult) {
           <div style="display: flex; justify-content: space-between; align-items: start;">
             <div>
               <div style="font-weight: 600; margin-bottom: 4px;">
-                Prompt Injection Detected
+                🛡️ Ward Threat Detected
               </div>
               <div style="font-size: 13px; opacity: 0.95;">
-                This page contains suspicious content that may attempt to manipulate AI systems. Exercise caution when using AI tools on this site.
+                This page contains suspicious content. Exercise caution and avoid sharing personal information.
               </div>
             </div>
-            <button id="noinject-close-banner" style="
+            <button id="ward-close-banner" style="
               background: rgba(255, 255, 255, 0.2);
               border: none;
               color: white;
@@ -163,18 +163,18 @@ function showWarningBanner(analysisResult) {
           opacity: 1;
         }
       }
-      #noinject-warning-banner::-webkit-scrollbar {
+      #ward-warning-banner::-webkit-scrollbar {
         width: 8px;
       }
-      #noinject-warning-banner::-webkit-scrollbar-track {
+      #ward-warning-banner::-webkit-scrollbar-track {
         background: rgba(0,0,0,0.1);
         border-radius: 4px;
       }
-      #noinject-warning-banner::-webkit-scrollbar-thumb {
+      #ward-warning-banner::-webkit-scrollbar-thumb {
         background: rgba(255,255,255,0.3);
         border-radius: 4px;
       }
-      #noinject-warning-banner::-webkit-scrollbar-thumb:hover {
+      #ward-warning-banner::-webkit-scrollbar-thumb:hover {
         background: rgba(255,255,255,0.4);
       }
     </style>
@@ -183,7 +183,7 @@ function showWarningBanner(analysisResult) {
   document.body.appendChild(banner);
 
   // Add close button handler
-  document.getElementById('noinject-close-banner').addEventListener('click', () => {
+  document.getElementById('ward-close-banner').addEventListener('click', () => {
     banner.remove();
   });
 }
@@ -191,16 +191,23 @@ function showWarningBanner(analysisResult) {
 // Analyze page content when loaded
 async function analyzePage() {
   try {
-    const content = extractVisibleContent();
-
-    if (!content || content.length < 50) {
-      console.log('[NoInject] Not enough content to analyze (< 50 chars)');
+    // Skip analysis on Gmail main interface (too dynamic and causes issues)
+    const url = window.location.href;
+    if (url.includes('mail.google.com') && (url.includes('#inbox') || url.includes('#category') || url === 'https://mail.google.com/mail/u/0/')) {
+      console.log('[Ward] Skipping Gmail inbox/category view - too dynamic');
       return;
     }
 
-    console.log(`[NoInject] Starting analysis of ${content.length} characters...`);
-    console.log(`[NoInject] Content preview:`, content.substring(0, 200) + '...');
-    console.log(`[NoInject] FULL CONTENT FOR DEBUGGING:`, content);
+    const content = extractVisibleContent();
+
+    if (!content || content.length < 50) {
+      console.log('[Ward] Not enough content to analyze (< 50 chars)');
+      return;
+    }
+
+    console.log(`[Ward] Starting analysis of ${content.length} characters...`);
+    console.log(`[Ward] Content preview:`, content.substring(0, 200) + '...');
+    console.log(`[Ward] FULL CONTENT FOR DEBUGGING:`, content);
 
     // Send content to background script for analysis
     const response = await chrome.runtime.sendMessage({
@@ -208,7 +215,7 @@ async function analyzePage() {
       content: content
     });
 
-    console.log('[NoInject] Analysis complete:', {
+    console.log('[Ward] Analysis complete:', {
       isMalicious: response.isMalicious,
       method: response.method,
       contentLength: response.contentLength,
@@ -216,12 +223,12 @@ async function analyzePage() {
     });
 
     if (response.isMalicious) {
-      console.log('[NoInject] THREAT DETECTED on this page:', {
+      console.log('[Ward] THREAT DETECTED on this page:', {
         analysis: response.analysis,
         judgment: response.judgment
       });
     } else {
-      console.log('[NoInject] Page is SAFE - No threats detected');
+      console.log('[Ward] Page is SAFE - No threats detected');
     }
 
     // Show warning banner if malicious
@@ -230,7 +237,7 @@ async function analyzePage() {
     }
 
   } catch (error) {
-    console.error('[NoInject] Failed to analyze page:', error);
+    console.error('[Ward] Failed to analyze page:', error);
   }
 }
 

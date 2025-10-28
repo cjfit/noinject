@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "NoInject - Prompt Injection Shield",
+  "name": "Ward",
   "version": "1.0.0",
-  "description": "Protects you from prompt injection attacks on websites using on-device AI detection.",
+  "description": "AI-powered protection against scams, phishing, and online threats. Offline and private.",
   "permissions": [
     "storage",
     "activeTab",

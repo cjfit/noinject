@@ -191,6 +191,19 @@ body {
   border-radius: 50%;
 }
 
+/* Ignore Actions */
+.ignore-actions {
+  padding: 12px 20px;
+  background: #FFFBEB;
+  border-bottom: 1px solid #FDE68A;
+  display: flex;
+  gap: 8px;
+}
+
+.ignore-actions.hidden {
+  display: none;
+}
+
 /* Actions */
 .actions {
   padding: 16px 20px;
@@ -225,6 +238,26 @@ body {
 
 .btn-secondary:active {
   transform: scale(0.98);
+}
+
+.btn-ignore {
+  background: #FEF3C7;
+  color: #92400E;
+  font-size: 13px;
+  padding: 8px 12px;
+}
+
+.btn-ignore:hover {
+  background: #FDE68A;
+}
+
+.btn-ignore:active {
+  transform: scale(0.98);
+}
+
+.btn-ignore svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* Footer */

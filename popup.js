@@ -12,6 +12,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const contentLength = document.getElementById('contentLength');
   const rescanBtn = document.getElementById('rescanBtn');
   const settingsBtn = document.getElementById('settingsBtn');
+  const ignoreActions = document.getElementById('ignoreActions');
+  const ignoreUrlBtn = document.getElementById('ignoreUrlBtn');
+  const ignoreDomainBtn = document.getElementById('ignoreDomainBtn');
 
   // Get current tab
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -103,8 +106,11 @@ document.addEventListener('DOMContentLoaded', async () => {
           <line x1="12" y1="17" x2="12.01" y2="17"></line>
         </svg>
       `;
-      statusTitle.textContent = 'Prompt Injection Detected';
-      statusDescription.textContent = 'This page contains suspicious content that may manipulate AI systems.';
+      statusTitle.textContent = 'Threat Detected';
+      statusDescription.textContent = 'This page contains suspicious content. Exercise caution.';
+
+      // Show ignore options
+      ignoreActions.classList.remove('hidden');
     } else {
       // Safe content
       statusIcon.className = 'status-icon safe';
@@ -114,7 +120,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         </svg>
       `;
       statusTitle.textContent = 'Page is Safe';
-      statusDescription.textContent = 'No prompt injection attacks detected on this page.';
+      statusDescription.textContent = 'No threats detected on this page.';
+
+      // Hide ignore options
+      ignoreActions.classList.add('hidden');
     }
 
     // Show analysis details if available
@@ -152,9 +161,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Settings button handler (placeholder)
+  // Settings button handler
   settingsBtn.addEventListener('click', () => {
     chrome.tabs.create({ url: 'settings.html' });
+  });
+
+  // Ignore URL button handler
+  ignoreUrlBtn.addEventListener('click', async () => {
+    const url = tab.url;
+    await addIgnoreRule(url, 'url');
+    ignoreUrlBtn.textContent = '✓ URL Ignored';
+    ignoreUrlBtn.disabled = true;
+    setTimeout(() => {
+      window.close();
+    }, 1000);
+  });
+
+  // Ignore Domain button handler
+  ignoreDomainBtn.addEventListener('click', async () => {
+    try {
+      const urlObj = new URL(tab.url);
+      const domain = urlObj.hostname;
+      await addIgnoreRule(domain, 'domain');
+      ignoreDomainBtn.textContent = '✓ Domain Ignored';
+      ignoreDomainBtn.disabled = true;
+      setTimeout(() => {
+        window.close();
+      }, 1000);
+    } catch (error) {
+      console.error('Failed to parse URL:', error);
+    }
   });
 
   // Initial load
@@ -167,3 +203,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 });
+
+// Helper function to add ignore rule
+async function addIgnoreRule(pattern, type) {
+  const { ignoreRules = [] } = await chrome.storage.local.get(['ignoreRules']);
+
+  // Check if rule already exists
+  const exists = ignoreRules.some(rule => rule.pattern === pattern && rule.type === type);
+  if (!exists) {
+    ignoreRules.push({ pattern, type, addedAt: Date.now() });
+    await chrome.storage.local.set({ ignoreRules });
+    console.log('[Ward] Added ignore rule:', pattern, type);
+  }
+}
