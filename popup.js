@@ -223,6 +223,44 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Initial load
   loadStatus();
 
+  // Track current URL to detect navigation
+  let lastUrl = tab.url;
+  let lastStorageState = null;
+
+  // Poll for status updates while popup is open
+  const statusCheckInterval = setInterval(async () => {
+    try {
+      // Get current tab info to check for URL changes
+      const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+      // If URL changed, show scanning state
+      if (currentTab.url !== lastUrl) {
+        lastUrl = currentTab.url;
+        lastStorageState = null;
+        showScanning();
+      }
+
+      const storageKey = `detection_${currentTab.id}`;
+      const data = await chrome.storage.local.get([storageKey]);
+
+      // If storage was cleared (navigation), show scanning
+      if (lastStorageState && !data[storageKey]) {
+        lastStorageState = null;
+        showScanning();
+      } else if (data[storageKey] && data[storageKey].result) {
+        lastStorageState = data[storageKey];
+        displayResult(data[storageKey].result);
+      }
+    } catch (error) {
+      console.error('Failed to check status:', error);
+    }
+  }, 500); // Check every 500ms
+
+  // Clean up interval when popup closes
+  window.addEventListener('unload', () => {
+    clearInterval(statusCheckInterval);
+  });
+
   // Listen for updates from content script
   chrome.runtime.onMessage.addListener((message) => {
     if (message.action === 'updateStatus') {

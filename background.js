@@ -5,9 +5,15 @@ import { initializeEverydayMode, analyzeEveryday } from './modes/everyday/detect
 import { initializeAIPowerUserMode, analyzeAIPowerUser } from './modes/ai-power-user/detector.js';
 
 console.log('[Ward] Background script starting...');
+console.log('[Ward] Imports check:', {
+  hasInitializeEverydayMode: typeof initializeEverydayMode === 'function',
+  hasAnalyzeEveryday: typeof analyzeEveryday === 'function',
+  hasInitializeAIPowerUserMode: typeof initializeAIPowerUserMode === 'function',
+  hasAnalyzeAIPowerUser: typeof analyzeAIPowerUser === 'function'
+});
 
 let currentMode = 'everyday'; // Default mode
-let everydaySession = null;
+let everydaySessions = { analyzerSession: null, judgeSession: null };
 let aiPowerUserSessions = { aiSession: null, judgeSession: null };
 let isAiAvailable = false;
 const DETECTION_CACHE = new Map(); // Cache results per URL
@@ -22,9 +28,32 @@ async function initializeAI() {
     console.log(`[Ward] Initializing in ${currentMode} mode...`);
 
     if (currentMode === 'everyday') {
-      everydaySession = await initializeEverydayMode();
-      isAiAvailable = everydaySession !== null;
-      console.log('[Ward] Everyday mode session:', everydaySession ? 'Created' : 'Failed');
+      console.log('[Ward] Calling initializeEverydayMode()...');
+      console.log('[Ward] initializeEverydayMode function:', initializeEverydayMode);
+
+      if (typeof initializeEverydayMode !== 'function') {
+        console.error('[Ward] ERROR: initializeEverydayMode is not a function!');
+        isAiAvailable = false;
+        return;
+      }
+
+      try {
+        console.log('[Ward] About to call initializeEverydayMode...');
+        everydaySessions = await initializeEverydayMode();
+        console.log('[Ward] initializeEverydayMode call completed');
+        console.log('[Ward] initializeEverydayMode returned:', {
+          hasAnalyzer: !!everydaySessions?.analyzerSession,
+          hasJudge: !!everydaySessions?.judgeSession,
+          rawResult: everydaySessions
+        });
+        isAiAvailable = everydaySessions.analyzerSession !== null && everydaySessions.judgeSession !== null;
+        console.log('[Ward] Everyday mode sessions:', everydaySessions.analyzerSession ? 'Created' : 'Failed');
+        console.log('[Ward] isAiAvailable:', isAiAvailable);
+      } catch (everydayInitError) {
+        console.error('[Ward] ERROR calling initializeEverydayMode:', everydayInitError);
+        console.error('[Ward] Error stack:', everydayInitError.stack);
+        isAiAvailable = false;
+      }
     } else if (currentMode === 'ai-power-user') {
       aiPowerUserSessions = await initializeAIPowerUserMode();
       isAiAvailable = aiPowerUserSessions.aiSession !== null && aiPowerUserSessions.judgeSession !== null;
@@ -62,7 +91,18 @@ async function analyzeContent(content) {
 
     if (currentMode === 'everyday') {
       console.log('[Ward] Using Everyday mode detector');
-      return await analyzeEveryday(everydaySession, content);
+      console.log('[Ward] Passing to analyzeEveryday:', {
+        hasAnalyzer: !!everydaySessions.analyzerSession,
+        hasJudge: !!everydaySessions.judgeSession,
+        contentLength: content.length
+      });
+      const result = await analyzeEveryday(
+        everydaySessions.analyzerSession,
+        everydaySessions.judgeSession,
+        content
+      );
+      console.log('[Ward] analyzeEveryday returned:', result);
+      return result;
     } else if (currentMode === 'ai-power-user') {
       console.log('[Ward] Using AI Power User mode detector');
       return await analyzeAIPowerUser(

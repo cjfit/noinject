@@ -5,29 +5,47 @@ console.log('[Ward] Content script loaded and running');
 
 // Extract all visible text content from the page
 function extractVisibleContent() {
-  // Get all text from the body, excluding scripts, styles, and hidden elements
   const walker = document.createTreeWalker(
     document.body,
     NodeFilter.SHOW_TEXT,
     {
       acceptNode: function(node) {
-        // Skip if parent is script, style, or noscript
         const parent = node.parentElement;
         if (!parent) return NodeFilter.FILTER_REJECT;
 
+        // Skip scripts, styles, etc.
         const tagName = parent.tagName.toLowerCase();
         if (['script', 'style', 'noscript', 'iframe'].includes(tagName)) {
           return NodeFilter.FILTER_REJECT;
         }
 
-        // Skip if element is hidden
+        // Skip if text is empty or just whitespace
+        if (!node.textContent.trim()) {
+          return NodeFilter.FILTER_REJECT;
+        }
+
+        // Check if element is actually visible
         const style = window.getComputedStyle(parent);
         if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
           return NodeFilter.FILTER_REJECT;
         }
 
-        // Skip if text is empty or just whitespace
-        if (!node.textContent.trim()) {
+        // Check if element is in the current viewport or very close to it
+        const rect = parent.getBoundingClientRect();
+        const windowHeight = window.innerHeight || document.documentElement.clientHeight;
+        const windowWidth = window.innerWidth || document.documentElement.clientWidth;
+
+        // Only include elements that are in viewport or just outside it (within 1 viewport height/width)
+        // This catches sidebar content but excludes far-off scrolled content
+        if (rect.bottom < -windowHeight ||
+            rect.top > windowHeight * 2 ||
+            rect.right < 0 ||
+            rect.left > windowWidth) {
+          return NodeFilter.FILTER_REJECT;
+        }
+
+        // Skip if element has zero size
+        if (rect.width === 0 || rect.height === 0) {
           return NodeFilter.FILTER_REJECT;
         }
 
@@ -42,21 +60,8 @@ function extractVisibleContent() {
     textContent.push(node.textContent.trim());
   }
 
-  // Also check input fields, textareas for placeholder text and values
-  const inputs = document.querySelectorAll('input[type="text"], input[type="search"], textarea');
-  inputs.forEach(input => {
-    if (input.placeholder) {
-      textContent.push(input.placeholder);
-    }
-    if (input.value) {
-      textContent.push(input.value);
-    }
-  });
-
   // Join all text with spaces and clean up
   let fullText = textContent.join(' ');
-
-  // Clean up excessive whitespace
   fullText = fullText.replace(/\s+/g, ' ').trim();
 
   return fullText;
@@ -188,15 +193,89 @@ function showWarningBanner(analysisResult) {
   });
 }
 
+// Track if analysis is in progress to prevent duplicate requests
+let analysisInProgress = false;
+let lastAnalyzedContent = '';
+
 // Analyze page content when loaded
 async function analyzePage() {
   try {
+    // Prevent multiple simultaneous analyses
+    if (analysisInProgress) {
+      console.log('[Ward] Analysis already in progress, skipping...');
+      return;
+    }
+
+    // Skip email inbox list views - only analyze individual message views
+    const url = window.location.href;
+
+    // Gmail: Skip inbox list, only analyze individual messages
+    if (url.includes('mail.google.com')) {
+      // Gmail individual message URLs have format: #inbox/messageId or #label/messageId
+      // Inbox list views are just: #inbox or #inbox?compose=new
+      const hashPart = url.split('#')[1] || '';
+      const pathSegments = hashPart.split('/');
+
+      // If no second segment (after inbox/label), it's a list view
+      if (pathSegments.length < 2 || !pathSegments[1]) {
+        console.log('[Ward] Skipping Gmail inbox list view - only analyzing individual messages');
+        await chrome.runtime.sendMessage({
+          action: 'analyzeContent',
+          content: '',
+          skipped: true
+        });
+        return;
+      }
+      console.log('[Ward] Gmail individual message detected, proceeding with analysis');
+    }
+
+    // Outlook: Skip inbox list views
+    if (url.includes('outlook.live.com') || url.includes('outlook.office.com')) {
+      // Outlook message view has /mail/id/ in the URL
+      // Inbox list is just /mail/inbox or /mail/0/
+      if (!url.includes('/mail/id/')) {
+        console.log('[Ward] Skipping Outlook inbox list view - only analyzing individual messages');
+        await chrome.runtime.sendMessage({
+          action: 'analyzeContent',
+          content: '',
+          skipped: true
+        });
+        return;
+      }
+      console.log('[Ward] Outlook individual message detected, proceeding with analysis');
+    }
+
+    // Yahoo Mail: Skip inbox list views
+    if (url.includes('mail.yahoo.com')) {
+      // Yahoo message view has /.m/ in the URL path
+      // Inbox list is just /d/folders/1 or similar
+      if (!url.includes('/.m/')) {
+        console.log('[Ward] Skipping Yahoo Mail inbox list view - only analyzing individual messages');
+        await chrome.runtime.sendMessage({
+          action: 'analyzeContent',
+          content: '',
+          skipped: true
+        });
+        return;
+      }
+      console.log('[Ward] Yahoo Mail individual message detected, proceeding with analysis');
+    }
+
     const content = extractVisibleContent();
 
     if (!content || content.length < 50) {
       console.log('[Ward] Not enough content to analyze (< 50 chars)');
       return;
     }
+
+    // Skip if content hasn't changed significantly (less than 5% difference)
+    if (lastAnalyzedContent && Math.abs(content.length - lastAnalyzedContent.length) < lastAnalyzedContent.length * 0.05) {
+      console.log('[Ward] Content unchanged, skipping re-analysis');
+      return;
+    }
+
+    analysisInProgress = true;
+    lastAnalyzedContent = content;
 
     console.log(`[Ward] Starting analysis of ${content.length} characters...`);
     console.log(`[Ward] Content preview:`, content.substring(0, 200) + '...');
@@ -231,6 +310,9 @@ async function analyzePage() {
 
   } catch (error) {
     console.error('[Ward] Failed to analyze page:', error);
+  } finally {
+    // Always reset the flag so future analyses can run
+    analysisInProgress = false;
   }
 }
 

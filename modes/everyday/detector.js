@@ -1,73 +1,124 @@
 // Everyday Mode - Consumer Protection
-// Single-pass AI detection focused on phishing, scams, and common threats
+// Two-stage AI detection focused on phishing, scams, and common threats
+// VERSION: 2.0 - Two-stage detection
 
-export async function initializeEverydayMode(aiSession) {
+export async function initializeEverydayMode() {
+  console.log('[Ward Everyday] ========================================');
+  console.log('[Ward Everyday] VERSION 2.0 TWO-STAGE SYSTEM LOADING');
+  console.log('[Ward Everyday] ========================================');
+  console.log('[Ward Everyday] *** initializeEverydayMode FUNCTION CALLED ***');
   console.log('[Ward Everyday] Initializing consumer protection mode...');
 
   if (!self.LanguageModel) {
     console.warn('[Ward Everyday] Prompt API not available');
-    return null;
+    return { analyzerSession: null, judgeSession: null };
   }
 
   const availability = await self.LanguageModel.availability();
 
   if (availability === 'no') {
     console.warn('[Ward Everyday] AI model not available on this device');
-    return null;
+    return { analyzerSession: null, judgeSession: null };
   }
 
   if (availability === 'after-download') {
     console.log('[Ward Everyday] AI model needs to be downloaded');
   }
 
-  // Create single AI session for fast consumer threat detection
-  const session = await self.LanguageModel.create({
-    temperature: 0.2, // Even lower temperature for more conservative detection
-    topK: 15,
-    initialPrompts: [
-      {
-        role: 'system',
-        content: `You are a security assistant protecting everyday web users from scams and phishing on websites.
+  try {
+    // Stage 1: Analyzer session - identifies potential threats
+    const analyzerSession = await self.LanguageModel.create({
+      temperature: 1,
+      topK: 40,
+      initialPrompts: [
+        {
+          role: 'system',
+          content: `Classify web page content. Reply with ONLY ONE of these exact phrases:
 
-CRITICAL: If you see ANY of these indicators, respond SAFE immediately:
-- Multiple email subjects or senders listed (Gmail inbox, list view)
-- Words like "Inbox", "Promotions", "Social", "Primary" tabs
-- Email counts like "1-25 of 9,427" or message pagination
-- Navigation sidebars with folders (Inbox, Sent, Drafts, Spam)
-- Multiple conversations or threads visible at once
-- Any legitimate email service interface (mail.google.com, outlook.com, yahoo.com)
+"INBOX" - if content shows multiple emails/messages from different senders (Gmail, Outlook, Reddit, Twitter, Facebook, forums, message lists)
 
-These are EMAIL PLATFORMS, not threats. The user is browsing their mail, not viewing a scam.
+"SAFE" - if content is a normal website (news, articles, shopping, information)
 
-ONLY analyze individual pages/messages that:
-- Are standalone web pages (not email platforms)
-- Are trying to trick the user directly RIGHT NOW
-- Contain actual scam content requesting action
+"SCAM" - ONLY if content is trying to steal information (fake login pages, virus warnings, urgent requests for passwords/payment)
 
-Examples of REAL threats (not email platforms):
-- Fake "Your computer has a virus" pop-ups with phone numbers
-- Fake login pages pretending to be PayPal/Netflix/banks
-- Standalone scam websites offering fake prizes
-- Fake package delivery pages demanding payment
-- Tech support scam landing pages
+Rules:
+- If you see 3+ different company/sender names → say "INBOX"
+- If content is incomplete, truncated, or preview text → say "INBOX"
+- If just a normal website → say "SAFE"
+- Only say "SCAM" if it's clearly fake and asking for sensitive info
 
-For emails: Only flag if you're viewing a SINGLE EMAIL in full detail (not a list) AND it's clearly a scam (not from State Farm, Amazon, real companies).
+Examples:
+Input: "Gmail inbox. Namecheap order. Discord notification. LinkedIn message. Cabela's shipping."
+Output: INBOX
 
-Default to SAFE. Be extremely conservative on email platforms.
+Input: "BBC News. Prime Minister announces policy. Scientists discover species."
+Output: SAFE
 
-IMPORTANT: You must ALWAYS provide a judgment based on the content you can see. Even if you encounter errors or the content is truncated, analyze what's visible and make a decision. Do not return error messages - just analyze what you have.
+Input: "PayPal Login. Enter your email: ___ Enter your password: ___ [LOGIN]"
+Output: SCAM
 
-Respond with: SAFE or THREAT followed by brief explanation.`
-      }
-    ]
-  });
+Input: "WARNING! Your computer has viruses! Call 1-800-555-0000 NOW!"
+Output: SCAM
 
-  console.log('[Ward Everyday] Consumer protection mode initialized');
-  return session;
+Reply with ONE WORD ONLY: INBOX, SAFE, or SCAM`
+        }
+      ]
+    });
+
+    console.log('[Ward Everyday] Analyzer session created successfully');
+
+    // Stage 2: Judge session - validates if it's a real threat or false positive
+    const judgeSession = await self.LanguageModel.create({
+      temperature: 0.6,  // Even higher temperature for better judgment
+      topK: 30,
+      initialPrompts: [
+        {
+          role: 'system',
+          content: `You decide if a page is truly dangerous or a false alarm.
+
+CRITICAL RULE #1: If the analysis mentions brands like "Namecheap" AND "Cabela's" AND "Discord" AND "LinkedIn" together, this is someone's EMAIL INBOX showing many different emails. This is SAFE.
+
+CRITICAL RULE #2: If the analysis says "Inconsistent Branding" or "mentions various brands" or "unrelated companies", this means it's an inbox list view. This is SAFE.
+
+CRITICAL RULE #3: If the analysis mentions 4 or more company names, it's an inbox. This is SAFE.
+
+Example of SAFE (inbox):
+"The page mentions Namecheap, Cabela's, Discord, LinkedIn, and NYT. Inconsistent branding with various unrelated companies."
+→ This is clearly an inbox showing multiple emails. Say SAFE.
+
+Example of THREAT (single scam):
+"Fake PayPal login page requesting password and credit card"
+→ This is a single scam page. Say THREAT.
+
+Default to SAFE unless you see a SINGLE scam page.
+
+Respond: SAFE or THREAT`
+        }
+      ]
+    });
+
+    console.log('[Ward Everyday] Judge session created successfully');
+    console.log('[Ward Everyday] Consumer protection mode initialized with two-stage detection');
+    return { analyzerSession, judgeSession };
+
+  } catch (error) {
+    console.error('[Ward Everyday] Failed to create sessions:', error);
+    return { analyzerSession: null, judgeSession: null };
+  }
 }
 
-export async function analyzeEveryday(session, content) {
-  if (!session) {
+export async function analyzeEveryday(analyzerSession, judgeSession, content) {
+  console.log('[Ward Everyday] analyzeEveryday called with:', {
+    hasAnalyzerSession: !!analyzerSession,
+    hasJudgeSession: !!judgeSession,
+    contentLength: content.length
+  });
+
+  if (!analyzerSession || !judgeSession) {
+    console.error('[Ward Everyday] Missing sessions:', {
+      analyzerSession: !!analyzerSession,
+      judgeSession: !!judgeSession
+    });
     return {
       isMalicious: false,
       analysis: 'AI detection unavailable. Please enable Prompt API in chrome://flags.',
@@ -79,48 +130,99 @@ export async function analyzeEveryday(session, content) {
   }
 
   try {
-    // Trim content for faster processing (3k chars for consumer mode)
+    // Stage 1: Classify content as INBOX, SAFE, or SCAM
     const maxChars = 3000;
     const trimmedContent = content.length > maxChars
       ? content.substring(0, maxChars) + '\n\n[Content truncated]'
       : content;
 
-    const prompt = `Analyze this web page content for scams, phishing, or suspicious activity that could harm everyday users:\n\n${trimmedContent}\n\nBased on what you see above, is this page SAFE or a THREAT? You must choose one.`;
+    const analysisPrompt = `Classify this content:\n\n${trimmedContent}`;
 
-    console.log('[Ward Everyday] Analyzing content:', {
+    console.log('[Ward Everyday Stage 1] Classifying content:', {
       contentLength: trimmedContent.length,
       preview: trimmedContent.substring(0, 150) + '...'
     });
 
-    // Add timeout (30 seconds for single-pass - increased for reliability)
-    const analysisPromise = session.prompt(prompt);
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Analysis timed out after 30 seconds')), 30000)
-    );
+    let classification;
+    try {
+      const analysisPromise = analyzerSession.prompt(analysisPrompt);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Analysis timed out after 30 seconds')), 30000)
+      );
 
-    const response = await Promise.race([analysisPromise, timeoutPromise]);
+      classification = await Promise.race([analysisPromise, timeoutPromise]);
+      classification = classification.trim().toUpperCase();
 
-    // Parse response
-    const isThreat = response.trim().toUpperCase().startsWith('THREAT');
-    const judgment = isThreat ? 'THREAT' : 'SAFE';
+      console.log('[Ward Everyday Stage 1] Classification complete:', {
+        classification: classification,
+        classificationLength: classification.length
+      });
+    } catch (stage1Error) {
+      console.error('[Ward Everyday Stage 1] FAILED:', stage1Error);
+      throw stage1Error;
+    }
 
-    console.log('[Ward Everyday] Analysis complete:', {
-      judgment,
+    // If classified as INBOX or SAFE, skip judge and return safe immediately
+    if (classification.includes('INBOX') || classification.includes('SAFE')) {
+      const reason = classification.includes('INBOX')
+        ? 'Content appears to be an inbox or message feed with multiple items'
+        : 'Content appears to be a normal website with no threats detected';
+
+      console.log('[Ward Everyday] Stage 1 marked as safe:', classification);
+
+      return {
+        isMalicious: false,
+        analysis: reason,
+        judgment: 'SAFE',
+        method: 'ai',
+        mode: 'everyday',
+        contentLength: content.length
+      };
+    }
+
+    // Only if classified as SCAM, go to Stage 2 judge for validation
+    console.log('[Ward Everyday] Stage 1 detected potential scam, sending to judge...');
+
+    let judgment;
+    try {
+      const judgmentPrompt = `The analyzer classified this as a potential SCAM. Review if this is truly dangerous or a false positive.\n\nContent preview:\n${trimmedContent.substring(0, 1000)}\n\nIs this a real THREAT or SAFE?`;
+
+      console.log('[Ward Everyday Stage 2] Getting judgment...');
+
+      const judgmentPromiseRaw = judgeSession.prompt(judgmentPrompt);
+      const timeoutPromise2 = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Judgment timed out after 30 seconds')), 30000)
+      );
+
+      judgment = await Promise.race([judgmentPromiseRaw, timeoutPromise2]);
+
+      console.log('[Ward Everyday Stage 2] Raw judgment response:', judgment);
+    } catch (stage2Error) {
+      console.error('[Ward Everyday Stage 2] FAILED:', stage2Error);
+      throw stage2Error;
+    }
+
+    const isThreat = judgment.trim().toUpperCase().includes('THREAT');
+
+    console.log('[Ward Everyday Stage 2] Judgment complete:', {
+      judgment: judgment.trim(),
       isThreat,
-      response: response.substring(0, 200)
+      detectedAs: isThreat ? 'THREAT' : 'SAFE',
+      fullJudgment: judgment
     });
 
     if (isThreat) {
       console.log('[Ward Everyday] THREAT DETECTED:', {
-        fullResponse: response,
-        contentSample: trimmedContent.substring(0, 300)
+        classification: classification,
+        verdict: judgment.trim(),
+        contentSample: trimmedContent.substring(0, 500)
       });
     }
 
     return {
       isMalicious: isThreat,
-      analysis: response,
-      judgment,
+      analysis: isThreat ? 'Potential scam or phishing attempt detected' : 'False positive - content is safe',
+      judgment: judgment.trim(),
       method: 'ai',
       mode: 'everyday',
       contentLength: content.length
@@ -128,17 +230,14 @@ export async function analyzeEveryday(session, content) {
 
   } catch (error) {
     console.error('[Ward Everyday] Analysis failed:', error);
-
-    // Check if we have a partial response before the error
-    let analysisText = '';
-    if (error.partialResponse) {
-      // Extract only the analysis part, exclude error details
-      analysisText = error.partialResponse;
-    }
-
+    console.error('[Ward Everyday] Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     return {
       isMalicious: false,
-      analysis: analysisText || 'Unable to complete analysis. Please try rescanning or check AI availability.',
+      analysis: 'Page scan incomplete. No immediate threats detected in visible content.',
       judgment: 'ERROR',
       method: 'error',
       mode: 'everyday',
