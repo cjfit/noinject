@@ -191,13 +191,6 @@ function showWarningBanner(analysisResult) {
 // Analyze page content when loaded
 async function analyzePage() {
   try {
-    // Skip analysis on Gmail main interface (too dynamic and causes issues)
-    const url = window.location.href;
-    if (url.includes('mail.google.com') && (url.includes('#inbox') || url.includes('#category') || url === 'https://mail.google.com/mail/u/0/')) {
-      console.log('[Ward] Skipping Gmail inbox/category view - too dynamic');
-      return;
-    }
-
     const content = extractVisibleContent();
 
     if (!content || content.length < 50) {

@@ -55,6 +55,8 @@ For emails: Only flag if you're viewing a SINGLE EMAIL in full detail (not a lis
 
 Default to SAFE. Be extremely conservative on email platforms.
 
+IMPORTANT: You must ALWAYS provide a judgment based on the content you can see. Even if you encounter errors or the content is truncated, analyze what's visible and make a decision. Do not return error messages - just analyze what you have.
+
 Respond with: SAFE or THREAT followed by brief explanation.`
       }
     ]
@@ -83,7 +85,7 @@ export async function analyzeEveryday(session, content) {
       ? content.substring(0, maxChars) + '\n\n[Content truncated]'
       : content;
 
-    const prompt = `Analyze this web page content for scams, phishing, or suspicious activity that could harm everyday users:\n\n${trimmedContent}\n\nIs this SAFE or a THREAT?`;
+    const prompt = `Analyze this web page content for scams, phishing, or suspicious activity that could harm everyday users:\n\n${trimmedContent}\n\nBased on what you see above, is this page SAFE or a THREAT? You must choose one.`;
 
     console.log('[Ward Everyday] Analyzing content:', {
       contentLength: trimmedContent.length,
@@ -126,9 +128,17 @@ export async function analyzeEveryday(session, content) {
 
   } catch (error) {
     console.error('[Ward Everyday] Analysis failed:', error);
+
+    // Check if we have a partial response before the error
+    let analysisText = '';
+    if (error.partialResponse) {
+      // Extract only the analysis part, exclude error details
+      analysisText = error.partialResponse;
+    }
+
     return {
       isMalicious: false,
-      analysis: `Analysis error: ${error.message}`,
+      analysis: analysisText || 'Unable to complete analysis. Please try rescanning or check AI availability.',
       judgment: 'ERROR',
       method: 'error',
       mode: 'everyday',

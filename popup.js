@@ -39,11 +39,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Display scanning state
-  function showScanning() {
+  async function showScanning() {
     statusIcon.className = 'status-icon loading';
     statusIcon.innerHTML = '<div class="spinner"></div>';
     statusTitle.textContent = 'Scanning page...';
-    statusDescription.textContent = 'Analyzing content for prompt injection attacks';
+
+    // Get current mode to show appropriate message
+    const { detectionMode = 'everyday' } = await chrome.storage.local.get(['detectionMode']);
+    const modeMessage = detectionMode === 'everyday'
+      ? 'Analyzing content for threats'
+      : 'Analyzing content for prompt injection attacks';
+
+    statusDescription.textContent = modeMessage;
     analysisDetails.classList.add('hidden');
   }
 
@@ -64,6 +71,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Display result
   function displayResult(result) {
+    // Handle skipped cases
+    if (result.judgment === 'SKIPPED' || result.method === 'skipped') {
+      statusIcon.className = 'status-icon safe';
+      statusIcon.innerHTML = `
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="8" y1="12" x2="16" y2="12"></line>
+        </svg>
+      `;
+      statusTitle.textContent = 'Scan Skipped';
+      statusDescription.textContent = 'This page type is not scanned';
+
+      if (result.analysis) {
+        analysisDetails.classList.remove('hidden');
+        analysisText.textContent = result.analysis;
+        analysisMethod.textContent = 'Skipped';
+      }
+      return;
+    }
+
     // Handle timeout cases
     if (result.judgment === 'TIMEOUT' || result.method === 'timeout') {
       statusIcon.className = 'status-icon loading';

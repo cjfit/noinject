@@ -132,18 +132,56 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const content = request.content;
     const url = sender.tab?.url || 'unknown';
 
+    // Check if content script marked this as skipped
+    if (request.skipped) {
+      console.log('[Ward] Content script skipped analysis for:', url);
+      const skipResult = {
+        isMalicious: false,
+        analysis: 'Page scanning skipped (email platform interface)',
+        judgment: 'SKIPPED',
+        method: 'skipped',
+        mode: currentMode,
+        contentLength: 0
+      };
+
+      // Store result so popup shows proper status
+      chrome.storage.local.set({
+        [`detection_${sender.tab.id}`]: {
+          result: skipResult,
+          url: sender.tab.url,
+          timestamp: Date.now()
+        }
+      });
+
+      updateBadge(sender.tab.id, false);
+      sendResponse(skipResult);
+      return;
+    }
+
     // Check if URL should be ignored
     shouldIgnoreUrl(url).then(ignored => {
       if (ignored) {
         console.log('[Ward] Skipping analysis for ignored URL:', url);
-        sendResponse({
+        const ignoreResult = {
           isMalicious: false,
           analysis: 'This page is ignored and will not be scanned.',
           judgment: 'IGNORED',
           method: 'ignored',
           mode: currentMode,
           contentLength: content.length
+        };
+
+        // Store result so popup shows proper status
+        chrome.storage.local.set({
+          [`detection_${sender.tab.id}`]: {
+            result: ignoreResult,
+            url: sender.tab.url,
+            timestamp: Date.now()
+          }
         });
+
+        updateBadge(sender.tab.id, false);
+        sendResponse(ignoreResult);
         return;
       }
 
@@ -275,17 +313,26 @@ setInterval(() => {
   }
 }, 300000); // Every 5 minutes
 
-// Clear cache when navigating to a new page
+// Clear stored tab state when navigating to a new page (but keep DETECTION_CACHE)
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status === 'loading' && changeInfo.url) {
-    // Clear cache entries for this URL
-    const urlPrefix = changeInfo.url;
-    for (const key of DETECTION_CACHE.keys()) {
-      if (key.startsWith(urlPrefix + ':')) {
-        DETECTION_CACHE.delete(key);
-      }
+  // Trigger on any loading event, whether URL changed or not
+  if (changeInfo.status === 'loading') {
+    // Skip chrome:// pages and extension pages
+    if (tab.url && (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://'))) {
+      console.log('[Ward] Skipping chrome:// or extension page:', tab.url);
+      return;
     }
-    console.log('[Ward] Cleared cache for new navigation to:', changeInfo.url);
+
+    console.log('[Ward] Page loading detected:', tab.url);
+
+    // Clear stored detection result for this tab so popup shows "Scanning..." state
+    chrome.storage.local.remove([`detection_${tabId}`]);
+
+    // Reset badge to default state while new page loads
+    updateBadge(tabId, false);
+
+    console.log('[Ward] Cleared tab state for navigation');
+    // Note: DETECTION_CACHE is preserved so revisiting pages uses cached results
   }
 });
 
