@@ -37,24 +37,29 @@ export async function initializeEverydayMode() {
 
 "INBOX" - if content shows multiple emails/messages from different senders (Gmail, Outlook, Reddit, Twitter, Facebook, forums, message lists)
 
-"SAFE" - if content is a normal website (news, articles, shopping, information)
+"SAFE" - if content is a normal website (news, articles, shopping, information) OR a legitimate notification email
 
 "SCAM" - ONLY if content is trying to steal information (fake login pages, virus warnings, urgent requests for passwords/payment)
 
 Rules:
 - If you see 3+ different company/sender names → say "INBOX"
 - If content is incomplete, truncated, or preview text → say "INBOX"
+- If FROM field shows legitimate company domain (e.g., noreply@discord.com, alert@amazon.com) → say "SAFE"
+- If email is from official domain matching the company in the content → say "SAFE"
 - If just a normal website → say "SAFE"
-- Only say "SCAM" if it's clearly fake and asking for sensitive info
+- Only say "SCAM" if sender domain is suspicious OR if clearly fake and asking for sensitive info
 
 Examples:
 Input: "Gmail inbox. Namecheap order. Discord notification. LinkedIn message. Cabela's shipping."
 Output: INBOX
 
+Input: "FROM: Discord <noreply@discord.com>\nSUBJECT: Login from new location\nSomeone tried to log into your account. Click to verify."
+Output: SAFE
+
 Input: "BBC News. Prime Minister announces policy. Scientists discover species."
 Output: SAFE
 
-Input: "PayPal Login. Enter your email: ___ Enter your password: ___ [LOGIN]"
+Input: "FROM: PayPal <security@paypal-verify.xyz>\nPayPal Login. Enter your email: ___ Enter your password: ___ [LOGIN]"
 Output: SCAM
 
 Input: "WARNING! Your computer has viruses! Call 1-800-555-0000 NOW!"
@@ -69,28 +74,39 @@ Reply with ONE WORD ONLY: INBOX, SAFE, or SCAM`
 
     // Stage 2: Judge session - validates if it's a real threat or false positive
     const judgeSession = await self.LanguageModel.create({
-      temperature: 0.6,  // Even higher temperature for better judgment
+      temperature: 0.6,
       topK: 30,
       initialPrompts: [
         {
           role: 'system',
-          content: `You decide if a page is truly dangerous or a false alarm.
+          content: `You decide if content is a CONFIRMED THREAT or SAFE. Only flag CONFIRMED scams with clear evidence.
 
-CRITICAL RULE #1: If the analysis mentions brands like "Namecheap" AND "Cabela's" AND "Discord" AND "LinkedIn" together, this is someone's EMAIL INBOX showing many different emails. This is SAFE.
+IMPORTANT: "Suspicious", "potential", or "could be" are NOT enough. Only flag CONFIRMED threats.
 
-CRITICAL RULE #2: If the analysis says "Inconsistent Branding" or "mentions various brands" or "unrelated companies", this means it's an inbox list view. This is SAFE.
+RULE #1: Legitimate sender domain = SAFE
+- @discord.com, @paypal.com, @amazon.com, @bankofamerica.com = Real company domains
+- Real companies send security alerts, login verifications, password resets
+- These are ALWAYS SAFE, even if they ask you to verify your account
 
-CRITICAL RULE #3: If the analysis mentions 4 or more company names, it's an inbox. This is SAFE.
+RULE #2: Only flag THREAT if ALL of these are true:
+1. FAKE sender domain (paypal-secure.xyz, amaz0n.net, discrod.com, microsoft-support.tk)
+2. Requests sensitive info (password, credit card, SSN)
+3. Contains urgent threats or fear tactics
 
-Example of SAFE (inbox):
-"The page mentions Namecheap, Cabela's, Discord, LinkedIn, and NYT. Inconsistent branding with various unrelated companies."
-→ This is clearly an inbox showing multiple emails. Say SAFE.
+RULE #3: If in doubt → say SAFE
 
-Example of THREAT (single scam):
-"Fake PayPal login page requesting password and credit card"
-→ This is a single scam page. Say THREAT.
+Examples of SAFE:
+- "Discord <noreply@discord.com> Someone logged in from Philadelphia. Verify if this was you." → Real Discord domain = SAFE
+- "PayPal <service@paypal.com> Confirm your $500 payment to John" → Real PayPal domain = SAFE
+- "Your bank <alerts@chase.com> New login detected from New York" → Real bank = SAFE
+- Security notifications from official domains are ALWAYS SAFE
 
-Default to SAFE unless you see a SINGLE scam page.
+Examples of THREAT (need ALL indicators):
+- "PayPal <verify@paypal-secure.tk> URGENT! Enter password NOW or we DELETE your account!" → Fake domain + threats + password request = THREAT
+- "VIRUS ALERT! Your PC is infected! Call 1-800-SCAMMER immediately!" → Tech support scam with phone number = THREAT
+- "Microsoft <help@micros0ft.xyz> Download this fix or your Windows expires" → Fake domain + fake download = THREAT
+
+If legitimate sender domain → ALWAYS say SAFE. Never flag legitimate companies as threats.
 
 Respond: SAFE or THREAT`
         }
@@ -182,12 +198,16 @@ export async function analyzeEveryday(analyzerSession, judgeSession, content) {
 
     // Only if classified as SCAM, go to Stage 2 judge for validation
     console.log('[Ward Everyday] Stage 1 detected potential scam, sending to judge...');
+    console.log('[Ward Everyday] Stage 1 classification:', classification);
 
     let judgment;
     try {
       const judgmentPrompt = `The analyzer classified this as a potential SCAM. Review if this is truly dangerous or a false positive.\n\nContent preview:\n${trimmedContent.substring(0, 1000)}\n\nIs this a real THREAT or SAFE?`;
 
-      console.log('[Ward Everyday Stage 2] Getting judgment...');
+      console.log('[Ward Everyday Stage 2] ===== FULL JUDGE INPUT =====');
+      console.log('[Ward Everyday Stage 2] Prompt being sent to judge:');
+      console.log(judgmentPrompt);
+      console.log('[Ward Everyday Stage 2] ===== END JUDGE INPUT =====');
 
       const judgmentPromiseRaw = judgeSession.prompt(judgmentPrompt);
       const timeoutPromise2 = new Promise((_, reject) =>
@@ -196,7 +216,10 @@ export async function analyzeEveryday(analyzerSession, judgeSession, content) {
 
       judgment = await Promise.race([judgmentPromiseRaw, timeoutPromise2]);
 
-      console.log('[Ward Everyday Stage 2] Raw judgment response:', judgment);
+      console.log('[Ward Everyday Stage 2] ===== FULL JUDGE OUTPUT =====');
+      console.log('[Ward Everyday Stage 2] Raw judgment response:');
+      console.log(judgment);
+      console.log('[Ward Everyday Stage 2] ===== END JUDGE OUTPUT =====');
     } catch (stage2Error) {
       console.error('[Ward Everyday Stage 2] FAILED:', stage2Error);
       throw stage2Error;
@@ -204,11 +227,10 @@ export async function analyzeEveryday(analyzerSession, judgeSession, content) {
 
     const isThreat = judgment.trim().toUpperCase().includes('THREAT');
 
-    console.log('[Ward Everyday Stage 2] Judgment complete:', {
-      judgment: judgment.trim(),
-      isThreat,
-      detectedAs: isThreat ? 'THREAT' : 'SAFE',
-      fullJudgment: judgment
+    console.log('[Ward Everyday Stage 2] Final decision:', {
+      rawJudgment: judgment.trim(),
+      containsThreatKeyword: isThreat,
+      finalDecision: isThreat ? 'THREAT' : 'SAFE'
     });
 
     if (isThreat) {
