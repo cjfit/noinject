@@ -124,7 +124,37 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (result.isMalicious) {
-      // Malicious content detected
+      // Malicious content detected - parse structured judgment
+      const fullJudgment = result.judgment || result.analysis || 'Suspicious content detected.';
+
+      // Parse the structured judgment
+      const lines = fullJudgment.split('\n').filter(line => line.trim());
+      let summary = 'Suspicious content detected.';
+      let details = [];
+      let recommendation = '';
+
+      if (lines.length > 1) {
+        const startIndex = lines[0].toUpperCase().includes('THREAT') ? 1 : 0;
+
+        if (lines[startIndex]) {
+          summary = lines[startIndex].trim();
+        }
+
+        let recommendationStarted = false;
+        for (let i = startIndex + 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+
+          if (line.includes('**')) {
+            recommendationStarted = true;
+            recommendation += line + ' ';
+          } else if (recommendationStarted) {
+            recommendation += line + ' ';
+          } else if (line.startsWith('*')) {
+            details.push(line.substring(1).trim());
+          }
+        }
+      }
+
       statusIcon.className = 'status-icon danger';
       statusIcon.innerHTML = `
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -134,7 +164,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         </svg>
       `;
       statusTitle.textContent = 'Threat Detected';
-      statusDescription.textContent = 'This page contains suspicious content. Exercise caution.';
+      statusDescription.textContent = summary;
+
+      // Show analysis details with structured format
+      analysisDetails.classList.remove('hidden');
+
+      // Build the analysis text with details and recommendation
+      let analysisHTML = '';
+
+      if (details.length > 0) {
+        analysisHTML += '<div style="margin-bottom: 12px;"><strong>Red Flags:</strong><ul style="margin: 8px 0; padding-left: 20px;">';
+        details.forEach(detail => {
+          analysisHTML += `<li style="margin-bottom: 4px;">${detail}</li>`;
+        });
+        analysisHTML += '</ul></div>';
+      }
+
+      if (recommendation) {
+        // Format bold text
+        const formattedRec = recommendation.trim().replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        analysisHTML += `<div style="padding: 10px; background: #FEF2F2; border-left: 3px solid #DC2626; border-radius: 4px; color: #991B1B;"><strong>Recommendation:</strong><br>${formattedRec}</div>`;
+      }
+
+      analysisText.innerHTML = analysisHTML;
 
       // Show ignore options
       ignoreActions.classList.remove('hidden');
@@ -149,27 +201,29 @@ document.addEventListener('DOMContentLoaded', async () => {
       statusTitle.textContent = 'Page is Safe';
       statusDescription.textContent = 'No threats detected on this page.';
 
+      // Show simple analysis
+      if (result.analysis) {
+        analysisDetails.classList.remove('hidden');
+        analysisText.textContent = result.analysis;
+      } else {
+        analysisDetails.classList.add('hidden');
+      }
+
       // Hide ignore options
       ignoreActions.classList.add('hidden');
     }
 
-    // Show analysis details if available
-    if (result.analysis) {
-      analysisDetails.classList.remove('hidden');
-      analysisText.textContent = result.analysis;
-
-      // Update metadata
+    // Update metadata
+    if (result.method) {
       const methodText = result.method === 'ai' ? 'AI-Powered Detection' :
                         result.method === 'timeout' ? 'Timeout' :
                         result.method === 'error' ? 'Error' : 'Pattern Matching';
       analysisMethod.textContent = methodText;
+    }
 
-      if (result.contentLength) {
-        const kb = (result.contentLength / 1000).toFixed(1);
-        contentLength.textContent = `${kb}KB analyzed`;
-      }
-    } else {
-      analysisDetails.classList.add('hidden');
+    if (result.contentLength) {
+      const kb = (result.contentLength / 1000).toFixed(1);
+      contentLength.textContent = `${kb}KB analyzed`;
     }
   }
 

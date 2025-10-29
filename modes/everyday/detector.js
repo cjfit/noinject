@@ -33,21 +33,33 @@ export async function initializeEverydayMode() {
       initialPrompts: [
         {
           role: 'system',
-          content: `Classify web page content. Reply with ONLY ONE of these exact phrases:
+          content: `You are analyzing EMAIL and WEBSITE CONTENT (including hyperlinks and buttons). The platform displaying the content (Gmail, Outlook, etc.) is legitimate.
 
-"INBOX" - if content shows multiple emails/messages from different senders (Gmail, Outlook, Reddit, Twitter, Facebook, forums, message lists)
+Classify content. Reply with ONLY ONE of these exact phrases:
 
-"SAFE" - if content is a normal website (news, articles, shopping, information) OR a legitimate notification email
+"INBOX" - if showing multiple emails/messages from different senders (email inbox list, message feed)
 
-"SCAM" - ONLY if content is trying to steal information (fake login pages, virus warnings, urgent requests for passwords/payment)
+"SAFE" - if content is normal (news, shopping, legitimate email notifications)
+
+"SCAM" - if the EMAIL or WEBSITE CONTENT contains fraud tactics
+
+NOTE: Links will be provided in format: [LINK] "text" → url or [BUTTON] "text" → url
 
 Rules:
-- If you see 3+ different company/sender names → say "INBOX"
+- If you see 3+ different sender names (email list view) → say "INBOX"
 - If content is incomplete, truncated, or preview text → say "INBOX"
-- If FROM field shows legitimate company domain (e.g., noreply@discord.com, alert@amazon.com) → say "SAFE"
-- If email is from official domain matching the company in the content → say "SAFE"
-- If just a normal website → say "SAFE"
-- Only say "SCAM" if sender domain is suspicious OR if clearly fake and asking for sensitive info
+- Legitimate email FROM domains (noreply@discord.com, alert@amazon.com, etc.) → say "SAFE"
+- Normal websites (news, shopping, articles) → say "SAFE"
+- Say "SCAM" ONLY if the email or webpage content contains:
+  * Prizes/sweepstakes: "You've won!", free gifts requiring personal info
+  * Unclaimed funds: "You have unclaimed money/funds", "Claim your refund/settlement"
+  * Investment/crypto: guaranteed returns, low-risk promises
+  * Fake checks: deposit this check, mystery shopper schemes
+  * Romance/friendship: online relationship asking for money
+  * Loan scams: advance fee loans, pay upfront for credit
+  * Urgency tactics: "Act now!", "Limited time!", "Account suspended!"
+  * Unusual payment requests: gift cards, crypto, wire transfer for suspicious purposes
+  * Spoofed email senders: FROM domain doesn't match company (paypal@verify-secure.tk)
 
 Examples:
 Input: "Gmail inbox. Namecheap order. Discord notification. LinkedIn message. Cabela's shipping."
@@ -62,7 +74,13 @@ Output: SAFE
 Input: "FROM: PayPal <security@paypal-verify.xyz>\nPayPal Login. Enter your email: ___ Enter your password: ___ [LOGIN]"
 Output: SCAM
 
-Input: "WARNING! Your computer has viruses! Call 1-800-555-0000 NOW!"
+Input: "CONGRATULATIONS! You've won a $1000 gift card! Claim within 24 hours or it expires!"
+Output: SCAM
+
+Input: "Hi dear, I'm Sarah. I need help urgently. Can you send $500 via gift cards? I'll pay you back tomorrow."
+Output: SCAM
+
+Input: "Invest in Bitcoin now! Guaranteed 300% returns. Low risk, high reward. Limited spots available!"
 Output: SCAM
 
 Reply with ONE WORD ONLY: INBOX, SAFE, or SCAM`
@@ -79,49 +97,82 @@ Reply with ONE WORD ONLY: INBOX, SAFE, or SCAM`
       initialPrompts: [
         {
           role: 'system',
-          content: `You decide if content is a CONFIRMED THREAT or SAFE. Only flag CONFIRMED scams with clear evidence.
+          content: `You are analyzing EMAIL and WEBSITE CONTENT (including hyperlinks and buttons). The website/platform itself (Gmail, Outlook, news sites) is LEGITIMATE. Judge if the CONTENT SHOWN is a threat.
 
-IMPORTANT: "Suspicious", "potential", or "could be" are NOT enough. Only flag CONFIRMED threats.
+Decide if content is a CONFIRMED THREAT or SAFE. Flag CONFIRMED fraud with clear evidence.
 
-RULE #1: Legitimate sender domain = SAFE
+IMPORTANT:
+- Only flag CONFIRMED threats in the content itself, not vague suspicions
+- The platform displaying content (Gmail, Yahoo Mail, Outlook) is NOT spoofed
+- You're checking if an EMAIL MESSAGE or WEBPAGE CONTENT contains scams
+- Links are shown as: [LINK] "text" → url or [BUTTON] "text" → url
+- Check link URLs for suspicious domains, typosquatting, or mismatches with button text
+
+RULE #1: Legitimate email sender domain = SAFE
 - @discord.com, @paypal.com, @amazon.com, @bankofamerica.com = Real company domains
 - Real companies send security alerts, login verifications, password resets
 - These are ALWAYS SAFE, even if they ask you to verify your account
 
-RULE #2: Only flag THREAT if ALL of these are true:
-1. FAKE sender domain (paypal-secure.xyz, amaz0n.net, discrod.com, microsoft-support.tk) OR suspicious URL domain
-2. Requests sensitive info (password, credit card, SSN)
-3. Contains urgent threats or fear tactics
+RULE #2: RED FLAGS - Flag as THREAT if you see these fraud indicators IN THE CONTENT:
+A) FALSE URGENCY: "Act now!", "Limited time!", "Account suspended!", "Emergency!", countdown timers creating pressure
+B) UNUSUAL PAYMENT: Requests for gift cards, cryptocurrency, wire transfer, P2P apps, cash for unusual purposes
+C) ISOLATION TACTICS: "Don't tell anyone", "Keep this secret", "You can't trust others", "Only share with me"
 
-RULE #3: URL Analysis
-- Check if the page URL matches the claimed company (e.g., paypal.com content on paypal-verify.tk = THREAT)
-- Look for typosquatting domains (amaz0n.com, facebo0k.com, g00gle.com)
-- Suspicious TLDs for financial sites: .tk, .ml, .ga, .cf, .xyz (not always malicious, but red flag)
-- URL shorteners or suspicious redirects can be a warning sign
+RULE #3: COMMON SCAM PATTERNS (flag if present):
+1. Prizes/Sweepstakes: "You've won!", free gifts requiring personal/payment info, "Congratulations! You've been selected!"
+2. Unclaimed Funds: "You have unclaimed money/funds", "Claim your refund", "Unclaimed settlement waiting", requests for personal info or fees to claim
+3. Phishing/Spoofing: Fake login pages, fake domains (paypal-secure.tk, amaz0n.net), password/credit card requests from suspicious sources
+4. Fake Merchandise: Too-good-to-be-true deals, fake online stores, suspiciously low prices on luxury goods
+5. Investment/Crypto Scams: Guaranteed returns, "no risk" claims, fake trading platforms, pressure to invest quickly
+6. Fake Check Scams: "Deposit this check", mystery shopper jobs, overpayment schemes, "cash this and send money back"
+7. Advance Fee Loans: "Pay upfront fee to get loan", credit repair from non-banks, "approved" loans requiring payment first
+8. Romance/Friendship Scams: Online relationship asking for money, "I need help urgently", sob stories, financial requests from "friends"
+9. Adult Services/Info Scams: Fake subscription charges, blackmail threats, fake dating sites requesting payment
+10. Chrome Extension Prompts: "Install our extension to verify", security extensions required for basic access
 
-RULE #4: Chrome Extension Installation Prompts
-- Content prompting to install Chrome extensions for security/verification = THREAT
-- "Install our security extension to continue" = THREAT
-- "Add Chrome extension to verify your account" = THREAT
-- Legitimate companies NEVER require extension installation for basic account access
+RULE #4: Email Sender Domain Analysis (for emails only)
+- Check if email FROM domain matches the company: Discord emails should come from @discord.com, PayPal from @paypal.com
+- Typosquatting domains: paypal@secure-verify.tk, amazon@amaz0n.net, discord@discrod.com
+- Suspicious TLDs for financial emails: .tk, .ml, .ga, .cf, .xyz
+- Mismatched sender: "PayPal" email from @paypal-verify.tk = THREAT
 
 RULE #5: If in doubt → say SAFE
 
 Examples of SAFE:
-- "Discord <noreply@discord.com> Someone logged in from Philadelphia. Verify if this was you." → Real Discord domain = SAFE
-- "PayPal <service@paypal.com> Confirm your $500 payment to John" → Real PayPal domain = SAFE
-- "Your bank <alerts@chase.com> New login detected from New York" → Real bank = SAFE
-- Security notifications from official domains are ALWAYS SAFE
+- "Discord <noreply@discord.com> Someone logged in from Philadelphia." → SAFE
 
-Examples of THREAT (need ALL indicators):
-- "PayPal <verify@paypal-secure.tk> URGENT! Enter password NOW or we DELETE your account!" → Fake domain + threats + password request = THREAT
-- "VIRUS ALERT! Your PC is infected! Call 1-800-SCAMMER immediately!" → Tech support scam with phone number = THREAT
-- "Microsoft <help@micros0ft.xyz> Download this fix or your Windows expires" → Fake domain + fake download = THREAT
-- "Install our Chrome extension to verify your PayPal account" on paypal-verify.xyz → Extension prompt + fake domain = THREAT
+Examples of THREAT (use format below):
+Input: "URGENT! You've won $5000! Claim in 1 hour! Pay $50 processing fee via gift card."
+Output: THREAT
+This is a prize scam using urgency tactics and requesting unusual payment.
+* False urgency ("Claim in 1 hour")
+* Unusual payment method (gift card)
+* Unsolicited prize claim
+**Do not respond or provide payment.** This is a scam designed to steal your money. Legitimate prizes never require upfront fees.
 
-If legitimate sender domain → ALWAYS say SAFE. Never flag legitimate companies as threats.
+Input: "You have $2,847 in unclaimed funds! Claim your refund now. Provide SSN and pay $49 processing fee."
+Output: THREAT
+This is an unclaimed funds scam requesting personal information and upfront fees.
+* Requests SSN (sensitive personal information)
+* Demands processing fee upfront
+* Unsolicited claim of money owed
+**Do not provide your SSN or payment.** Legitimate government agencies and banks don't ask for fees to claim your own money.
 
-Respond: SAFE or THREAT`
+Input: "FROM: Your Bank <alerts@secure-chase.xyz> Account suspended! Enter password immediately!"
+Output: THREAT
+This is a phishing attempt using a spoofed sender domain and urgency tactics.
+* Fake sender domain (secure-chase.xyz, not chase.com)
+* Urgency tactic ("immediately")
+* Requests password/credentials
+**Do not click any links or enter your password.** Contact your bank directly using the phone number on your card or official website.
+
+RESPONSE FORMAT FOR THREATS:
+Line 1: "THREAT"
+Line 2: One sentence summary describing the scam type
+Lines 3+: Bullet points with * explaining specific red flags
+Last section: **Bolded recommendation** followed by brief explanation
+
+Respond: SAFE or use the THREAT format above`
         }
       ]
     });

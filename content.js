@@ -3,6 +3,60 @@
 
 console.log('[Ward] Content script loaded and running');
 
+// Extract all visible hyperlinks with their associated text and context
+function extractVisibleLinks() {
+  const links = [];
+  const anchors = document.querySelectorAll('a[href], button[onclick]');
+
+  anchors.forEach(element => {
+    // Check if element is visible
+    const style = window.getComputedStyle(element);
+    if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+      return;
+    }
+
+    const rect = element.getBoundingClientRect();
+    const windowHeight = window.innerHeight || document.documentElement.clientHeight;
+    const windowWidth = window.innerWidth || document.documentElement.clientWidth;
+
+    // Only include visible elements
+    if (rect.bottom < -windowHeight ||
+        rect.top > windowHeight * 2 ||
+        rect.right < 0 ||
+        rect.left > windowWidth ||
+        rect.width === 0 ||
+        rect.height === 0) {
+      return;
+    }
+
+    let href = element.href || '';
+    const linkText = element.textContent.trim();
+    const ariaLabel = element.getAttribute('aria-label') || '';
+    const title = element.getAttribute('title') || '';
+
+    // Skip empty links or javascript: links
+    if (!href && !element.onclick) {
+      return;
+    }
+    if (href && (href.startsWith('javascript:') || href === '#')) {
+      return;
+    }
+
+    // Build context information
+    const context = {
+      text: linkText,
+      url: href,
+      ariaLabel: ariaLabel,
+      title: title,
+      isButton: element.tagName.toLowerCase() === 'button' || element.classList.contains('btn') || element.classList.contains('button')
+    };
+
+    links.push(context);
+  });
+
+  return links;
+}
+
 // Extract all visible text content from the page
 function extractVisibleContent() {
   const walker = document.createTreeWalker(
@@ -74,32 +128,58 @@ function showWarningBanner(analysisResult) {
     return;
   }
 
-  // Use the judge's detailed reasoning (judgment field) instead of generic analysis
-  const judgmentText = analysisResult.judgment || analysisResult.analysis || '';
+  // Use the judge's detailed reasoning (judgment field) from Stage 2
+  const fullJudgment = analysisResult.judgment || analysisResult.analysis || 'Suspicious content detected.';
 
-  // Split judgment into sentences or key points
-  const findings = judgmentText
-    .split(/[.!]\s+/)
-    .filter(sentence => sentence.trim().length > 20)
-    .slice(0, 4)  // Show up to 4 findings
-    .map(finding => finding.trim());
+  // Parse the structured judgment response
+  // Expected format:
+  // Line 1: THREAT
+  // Line 2: Summary sentence
+  // Lines 3+: Bullet points with *
+  // Last section: **Recommendation** with explanation
 
-  // Build findings HTML
-  let findingsHTML = '';
-  if (findings.length > 0) {
-    findingsHTML = `
-      <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.2);">
-        <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px; opacity: 0.9;">
-          AI Detected:
-        </div>
-        <ul style="margin: 0; padding-left: 20px; font-size: 12px; opacity: 0.95; line-height: 1.6;">
-          ${findings.map(finding => `
-            <li style="margin-bottom: 6px;">${finding}</li>
-          `).join('')}
-        </ul>
-      </div>
-    `;
+  const lines = fullJudgment.split('\n').filter(line => line.trim());
+  let summary = 'Suspicious content detected.';
+  let details = '';
+  let recommendation = '';
+
+  // Parse the judgment structure
+  if (lines.length > 1) {
+    // Skip "THREAT" line if present, get summary from line 2
+    const startIndex = lines[0].toUpperCase().includes('THREAT') ? 1 : 0;
+
+    // First non-THREAT line is the summary
+    if (lines[startIndex]) {
+      summary = lines[startIndex].trim();
+    }
+
+    // Collect bullet points (lines starting with *)
+    const bulletPoints = [];
+    let recommendationStarted = false;
+
+    for (let i = startIndex + 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+
+      // Check if we've reached the recommendation section (starts with **)
+      if (line.includes('**')) {
+        recommendationStarted = true;
+        recommendation += line + ' ';
+      } else if (recommendationStarted) {
+        recommendation += line + ' ';
+      } else if (line.startsWith('*')) {
+        bulletPoints.push(line.substring(1).trim());
+      }
+    }
+
+    // Format bullet points as HTML
+    if (bulletPoints.length > 0) {
+      details = bulletPoints.map(point => `<div style="margin-bottom: 6px;">• ${point}</div>`).join('');
+    }
   }
+
+  // Format bold text in summary and recommendation
+  summary = summary.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  recommendation = recommendation.trim().replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
 
   const banner = document.createElement('div');
   banner.id = 'ward-warning-banner';
@@ -128,13 +208,28 @@ function showWarningBanner(analysisResult) {
         </svg>
         <div style="flex: 1;">
           <div style="display: flex; justify-content: space-between; align-items: start;">
-            <div>
-              <div style="font-weight: 600; margin-bottom: 4px;">
+            <div style="flex: 1;">
+              <div style="font-weight: 600; margin-bottom: 8px;">
                 🛡️ Ward Threat Detected
               </div>
-              <div style="font-size: 13px; opacity: 0.95;">
-                This page contains suspicious content. Exercise caution and avoid sharing personal information.
+              <div style="font-size: 13px; opacity: 0.95; line-height: 1.5; margin-bottom: 12px;">
+                ${summary}
               </div>
+              ${details ? `
+                <details style="margin-bottom: 12px; cursor: pointer;">
+                  <summary style="font-size: 12px; font-weight: 600; opacity: 0.9; margin-bottom: 8px; user-select: none;">
+                    View Details
+                  </summary>
+                  <div style="font-size: 12px; opacity: 0.95; line-height: 1.6; margin-top: 8px; padding-left: 8px;">
+                    ${details}
+                  </div>
+                </details>
+              ` : ''}
+              ${recommendation ? `
+                <div style="font-size: 12px; opacity: 0.95; line-height: 1.5; padding: 10px; background: rgba(0,0,0,0.15); border-radius: 6px; border-left: 3px solid rgba(255,255,255,0.4);">
+                  ${recommendation}
+                </div>
+              ` : ''}
             </div>
             <button id="ward-close-banner" style="
               background: rgba(255, 255, 255, 0.2);
@@ -153,7 +248,6 @@ function showWarningBanner(analysisResult) {
               Dismiss
             </button>
           </div>
-          ${findingsHTML}
         </div>
       </div>
     </div>
@@ -262,6 +356,7 @@ async function analyzePage() {
     }
 
     const content = extractVisibleContent();
+    const links = extractVisibleLinks();
 
     if (!content || content.length < 50) {
       console.log('[Ward] Not enough content to analyze (< 50 chars)');
@@ -277,14 +372,28 @@ async function analyzePage() {
     analysisInProgress = true;
     lastAnalyzedContent = content;
 
+    // Build enhanced content with links
+    let enhancedContent = content;
+
+    if (links.length > 0) {
+      enhancedContent += '\n\nLINKS FOUND ON PAGE:\n';
+      links.forEach((link) => {
+        const linkType = link.isButton ? '[BUTTON]' : '[LINK]';
+        enhancedContent += `${linkType} "${link.text}" → ${link.url}\n`;
+        if (link.ariaLabel) enhancedContent += `  (aria-label: ${link.ariaLabel})\n`;
+        if (link.title) enhancedContent += `  (title: ${link.title})\n`;
+      });
+    }
+
     console.log(`[Ward] Starting analysis of ${content.length} characters...`);
+    console.log(`[Ward] Found ${links.length} links`);
     console.log(`[Ward] Content preview:`, content.substring(0, 200) + '...');
-    console.log(`[Ward] FULL CONTENT FOR DEBUGGING:`, content);
+    console.log(`[Ward] FULL CONTENT FOR DEBUGGING:`, enhancedContent);
 
     // Send content to background script for analysis
     const response = await chrome.runtime.sendMessage({
       action: 'analyzeContent',
-      content: content
+      content: enhancedContent
     });
 
     console.log('[Ward] Analysis complete:', {
@@ -303,10 +412,7 @@ async function analyzePage() {
       console.log('[Ward] Page is SAFE - No threats detected');
     }
 
-    // Show warning banner if malicious or timeout
-    if (response && (response.isMalicious || response.method === 'timeout')) {
-      showWarningBanner(response);
-    }
+    // No longer showing banner - popup will display the results instead
 
   } catch (error) {
     console.error('[Ward] Failed to analyze page:', error);
