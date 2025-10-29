@@ -303,8 +303,8 @@ async function analyzePage() {
       console.log('[Ward] Page is SAFE - No threats detected');
     }
 
-    // Show warning banner if malicious
-    if (response && response.isMalicious) {
+    // Show warning banner if malicious or timeout
+    if (response && (response.isMalicious || response.method === 'timeout')) {
       showWarningBanner(response);
     }
 

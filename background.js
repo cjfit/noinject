@@ -233,6 +233,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (DETECTION_CACHE.has(cacheKey)) {
         const cached = DETECTION_CACHE.get(cacheKey);
         console.log('[Ward] Returning cached result for URL:', url);
+
+        // Store cached result so popup shows proper status
+        chrome.storage.local.set({
+          [`detection_${sender.tab.id}`]: {
+            result: cached,
+            url: sender.tab.url,
+            timestamp: Date.now()
+          }
+        });
+
         sendResponse(cached);
         updateBadge(sender.tab.id, cached.isMalicious);
         return;
@@ -266,8 +276,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({
           error: 'Analysis timeout',
           isMalicious: false,
-          analysis: 'Analysis took too long and was cancelled. The page is assumed safe.',
-          judgment: 'TIMEOUT',
+          analysis: 'Unable to scan. Proceed with caution.',
+          judgment: 'Unable to scan. Proceed with caution.',
           method: 'timeout',
           mode: currentMode,
           contentLength: content.length
@@ -315,10 +325,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           error: error.message,
           isMalicious: false,
           analysis: error.message.includes('timeout')
-            ? 'AI analysis timed out. This may indicate the Prompt API is still downloading or is overloaded.'
+            ? 'Unable to scan. Proceed with caution.'
             : 'Analysis failed, defaulting to safe',
-          judgment: 'ERROR',
-          method: 'error',
+          judgment: error.message.includes('timeout')
+            ? 'Unable to scan. Proceed with caution.'
+            : 'ERROR',
+          method: error.message.includes('timeout') ? 'timeout' : 'error',
           mode: currentMode,
           contentLength: content.length
         });
