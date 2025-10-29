@@ -18,6 +18,7 @@ let aiPowerUserSessions = { aiSession: null, judgeSession: null };
 let isAiAvailable = false;
 const DETECTION_CACHE = new Map(); // Cache results per URL
 const ACTIVE_ANALYSES = new Map(); // Track ongoing analyses by tabId
+const SCANNING_ANIMATIONS = new Map(); // Track scanning animations by tabId
 
 // Initialize AI based on current mode
 async function initializeAI() {
@@ -259,6 +260,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
       console.log('[Ward] Starting fresh analysis (not cached) for URL:', url);
 
+      // Start animated scanning icon
+      startScanningAnimation(sender.tab.id);
+
       // Create cancellable analysis tracker
       const analysisTracker = {
         cancelled: false,
@@ -296,6 +300,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const duration = Date.now() - analysisTracker.startTime;
         console.log(`[Ward] Analysis completed in ${duration}ms`);
 
+        // Stop scanning animation
+        stopScanningAnimation(sender.tab.id);
+
         // Cache the result
         DETECTION_CACHE.set(cacheKey, result);
 
@@ -320,6 +327,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         clearTimeout(analysisTracker.timeout);
         ACTIVE_ANALYSES.delete(tabId);
+
+        // Stop scanning animation on error
+        stopScanningAnimation(tabId);
+
         console.error('[Ward] Analysis error:', error);
         sendResponse({
           error: error.message,
@@ -361,6 +372,128 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ success: true });
     });
 
+    return true;
+  }
+
+  // Handle request to open threat popup window
+  if (request.action === 'openThreatPopup') {
+    // Get the current tab's detection data
+    chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+      if (tabs[0]) {
+        const tabId = tabs[0].id;
+        const data = await chrome.storage.local.get([`detection_${tabId}`]);
+        const detection = data[`detection_${tabId}`];
+
+        if (detection && detection.result && detection.result.isMalicious) {
+          // Parse judgment to extract structured data
+          const fullJudgment = detection.result.judgment || detection.result.analysis || '';
+          const lines = fullJudgment.split('\n').filter(line => line.trim());
+          let summary = 'Suspicious content detected.';
+          let details = [];
+          let recommendation = '';
+
+          if (lines.length > 1) {
+            const startIndex = lines[0].toUpperCase().includes('THREAT') ? 1 : 0;
+            if (lines[startIndex]) {
+              summary = lines[startIndex].trim();
+            }
+
+            let recommendationStarted = false;
+            for (let i = startIndex + 1; i < lines.length; i++) {
+              const line = lines[i].trim();
+              if (line.includes('**')) {
+                recommendationStarted = true;
+                recommendation += line + ' ';
+              } else if (recommendationStarted) {
+                recommendation += line + ' ';
+              } else if (line.startsWith('*')) {
+                details.push(line.substring(1).trim());
+              }
+            }
+          }
+
+          const analysisData = {
+            summary: summary,
+            details: details,
+            recommendation: recommendation,
+            method: detection.result.method,
+            contentLength: detection.result.contentLength,
+            url: detection.url,
+            timestamp: detection.timestamp
+          };
+
+          const dataStr = encodeURIComponent(JSON.stringify(analysisData));
+
+          // Create a popup window - professional looking browser window
+          chrome.windows.create({
+            url: `alert.html?data=${dataStr}`,
+            type: 'popup',
+            width: 600,
+            height: 550,
+            focused: true
+          });
+        }
+      }
+    });
+
+    sendResponse({ success: true });
+    return true;
+  }
+
+  // Handle request to open details page
+  if (request.action === 'openDetailsPage') {
+    // Get the current tab's detection data
+    chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+      if (tabs[0]) {
+        const tabId = tabs[0].id;
+        const data = await chrome.storage.local.get([`detection_${tabId}`]);
+        const detection = data[`detection_${tabId}`];
+
+        if (detection && detection.result && detection.result.isMalicious) {
+          // Parse judgment to extract structured data
+          const fullJudgment = detection.result.judgment || detection.result.analysis || '';
+          const lines = fullJudgment.split('\n').filter(line => line.trim());
+          let summary = 'Suspicious content detected.';
+          let details = [];
+          let recommendation = '';
+
+          if (lines.length > 1) {
+            const startIndex = lines[0].toUpperCase().includes('THREAT') ? 1 : 0;
+            if (lines[startIndex]) {
+              summary = lines[startIndex].trim();
+            }
+
+            let recommendationStarted = false;
+            for (let i = startIndex + 1; i < lines.length; i++) {
+              const line = lines[i].trim();
+              if (line.includes('**')) {
+                recommendationStarted = true;
+                recommendation += line + ' ';
+              } else if (recommendationStarted) {
+                recommendation += line + ' ';
+              } else if (line.startsWith('*')) {
+                details.push(line.substring(1).trim());
+              }
+            }
+          }
+
+          const analysisData = {
+            summary: summary,
+            details: details,
+            recommendation: recommendation,
+            method: detection.result.method,
+            contentLength: detection.result.contentLength,
+            url: detection.url,
+            timestamp: detection.timestamp
+          };
+
+          const dataStr = encodeURIComponent(JSON.stringify(analysisData));
+          chrome.tabs.create({ url: `details.html?data=${dataStr}` });
+        }
+      }
+    });
+
+    sendResponse({ success: true });
     return true;
   }
 });
@@ -431,6 +564,85 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     // Note: DETECTION_CACHE is preserved so revisiting pages uses cached results
   }
 });
+
+// Create scanning animation with moving magnifying glass
+function startScanningAnimation(tabId) {
+  // Stop any existing animation for this tab
+  stopScanningAnimation(tabId);
+
+  let frame = 0;
+  const totalFrames = 8;
+
+  const animationInterval = setInterval(() => {
+    const canvas = new OffscreenCanvas(128, 128);
+    const ctx = canvas.getContext('2d');
+
+    // Clear canvas
+    ctx.clearRect(0, 0, 128, 128);
+
+    // Calculate magnifying glass position (moves in a circle)
+    const angle = (frame / totalFrames) * Math.PI * 2;
+    const radius = 15;
+    const centerX = 64 + Math.cos(angle) * radius;
+    const centerY = 64 + Math.sin(angle) * radius;
+
+    // Draw magnifying glass
+    // Glass circle (outer)
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 30, 0, Math.PI * 2);
+    ctx.strokeStyle = '#3B82F6';
+    ctx.lineWidth = 8;
+    ctx.stroke();
+
+    // Inner circle (lens reflection)
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 22, 0, Math.PI * 2);
+    ctx.strokeStyle = '#60A5FA';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // Handle
+    const handleAngle = angle + Math.PI * 0.75;
+    const handleLength = 30;
+    const handleX = centerX + Math.cos(handleAngle) * handleLength;
+    const handleY = centerY + Math.sin(handleAngle) * handleLength;
+
+    ctx.beginPath();
+    ctx.moveTo(centerX + Math.cos(handleAngle) * 25, centerY + Math.sin(handleAngle) * 25);
+    ctx.lineTo(handleX, handleY);
+    ctx.strokeStyle = '#3B82F6';
+    ctx.lineWidth = 8;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Set the icon
+    const imageData = ctx.getImageData(0, 0, 128, 128);
+    chrome.action.setIcon({ tabId, imageData });
+
+    frame = (frame + 1) % totalFrames;
+  }, 150); // Update every 150ms
+
+  SCANNING_ANIMATIONS.set(tabId, animationInterval);
+}
+
+function stopScanningAnimation(tabId) {
+  const animationInterval = SCANNING_ANIMATIONS.get(tabId);
+  if (animationInterval) {
+    clearInterval(animationInterval);
+    SCANNING_ANIMATIONS.delete(tabId);
+
+    // Reset to default safe icon
+    chrome.action.setIcon({
+      tabId,
+      path: {
+        16: 'icons/icon-safe-16.png',
+        32: 'icons/icon-safe-32.png',
+        48: 'icons/icon-safe-48.png',
+        128: 'icons/icon-safe-128.png'
+      }
+    });
+  }
+}
 
 // Initialize AI when extension starts
 initializeAI();

@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const ignoreActions = document.getElementById('ignoreActions');
   const ignoreUrlBtn = document.getElementById('ignoreUrlBtn');
   const ignoreDomainBtn = document.getElementById('ignoreDomainBtn');
+  const viewDetailsBtn = document.getElementById('viewDetailsBtn');
 
   // Get current tab
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -169,24 +170,35 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Show analysis details with structured format
       analysisDetails.classList.remove('hidden');
 
-      // Build the analysis text with details and recommendation
-      let analysisHTML = '';
-
-      if (details.length > 0) {
-        analysisHTML += '<div style="margin-bottom: 12px;"><strong>Red Flags:</strong><ul style="margin: 8px 0; padding-left: 20px;">';
-        details.forEach(detail => {
-          analysisHTML += `<li style="margin-bottom: 4px;">${detail}</li>`;
-        });
-        analysisHTML += '</ul></div>';
-      }
-
+      // Only show recommendation in popup
       if (recommendation) {
         // Format bold text
         const formattedRec = recommendation.trim().replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-        analysisHTML += `<div style="padding: 10px; background: #FEF2F2; border-left: 3px solid #DC2626; border-radius: 4px; color: #991B1B;"><strong>Recommendation:</strong><br>${formattedRec}</div>`;
+        analysisText.innerHTML = formattedRec;
+      } else {
+        analysisText.textContent = 'Exercise caution when interacting with this content.';
       }
 
-      analysisText.innerHTML = analysisHTML;
+      // Show "View Full Analysis" button and store data for details page
+      if (details.length > 0 || recommendation) {
+        viewDetailsBtn.classList.remove('hidden');
+
+        // Store analysis data for details page
+        const analysisData = {
+          summary: summary,
+          details: details,
+          recommendation: recommendation,
+          method: result.method,
+          contentLength: result.contentLength,
+          url: tab.url,
+          timestamp: Date.now()
+        };
+
+        viewDetailsBtn.onclick = () => {
+          const dataStr = encodeURIComponent(JSON.stringify(analysisData));
+          chrome.tabs.create({ url: `details.html?data=${dataStr}` });
+        };
+      }
 
       // Show ignore options
       ignoreActions.classList.remove('hidden');

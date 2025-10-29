@@ -240,24 +240,43 @@ body {
   transform: scale(0.98);
 }
 
-.btn-ignore {
+.btn-icon {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  padding: 0;
   background: #FEF3C7;
   color: #92400E;
-  font-size: 13px;
-  padding: 8px 12px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.btn-ignore:hover {
+.btn-icon:hover {
   background: #FDE68A;
 }
 
-.btn-ignore:active {
-  transform: scale(0.98);
+.btn-icon:active {
+  transform: scale(0.95);
 }
 
-.btn-ignore svg {
-  width: 14px;
-  height: 14px;
+.btn-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.btn-primary {
+  background: #3B82F6;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #2563EB;
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
 }
 
 /* Footer */

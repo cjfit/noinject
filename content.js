@@ -121,6 +121,12 @@ function extractVisibleContent() {
   return fullText;
 }
 
+// Show threat notification banner
+function showThreatNotification() {
+  // Get the latest analysis result from the response
+  // This will be called with the analysis result passed from analyzePage
+}
+
 // Show warning banner if malicious content detected
 function showWarningBanner(analysisResult) {
   // Check if banner already exists
@@ -189,7 +195,7 @@ function showWarningBanner(analysisResult) {
       top: 0;
       left: 0;
       right: 0;
-      background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
+      background: linear-gradient(135deg, #2563EB 0%, #1E40AF 100%);
       color: white;
       padding: 16px 20px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -209,27 +215,12 @@ function showWarningBanner(analysisResult) {
         <div style="flex: 1;">
           <div style="display: flex; justify-content: space-between; align-items: start;">
             <div style="flex: 1;">
-              <div style="font-weight: 600; margin-bottom: 8px;">
-                🛡️ Ward Threat Detected
-              </div>
-              <div style="font-size: 13px; opacity: 0.95; line-height: 1.5; margin-bottom: 12px;">
+              <div style="font-weight: 600; margin-bottom: 4px;">
                 ${summary}
               </div>
-              ${details ? `
-                <details style="margin-bottom: 12px; cursor: pointer;">
-                  <summary style="font-size: 12px; font-weight: 600; opacity: 0.9; margin-bottom: 8px; user-select: none;">
-                    View Details
-                  </summary>
-                  <div style="font-size: 12px; opacity: 0.95; line-height: 1.6; margin-top: 8px; padding-left: 8px;">
-                    ${details}
-                  </div>
-                </details>
-              ` : ''}
-              ${recommendation ? `
-                <div style="font-size: 12px; opacity: 0.95; line-height: 1.5; padding: 10px; background: rgba(0,0,0,0.15); border-radius: 6px; border-left: 3px solid rgba(255,255,255,0.4);">
-                  ${recommendation}
-                </div>
-              ` : ''}
+              <div style="font-size: 13px; opacity: 0.95;">
+                Open the Ward extension for details
+              </div>
             </div>
             <button id="ward-close-banner" style="
               background: rgba(255, 255, 255, 0.2);
@@ -408,11 +399,13 @@ async function analyzePage() {
         analysis: response.analysis,
         judgment: response.judgment
       });
+
+      // Show banner with threat information
+      showWarningBanner(response);
+
     } else {
       console.log('[Ward] Page is SAFE - No threats detected');
     }
-
-    // No longer showing banner - popup will display the results instead
 
   } catch (error) {
     console.error('[Ward] Failed to analyze page:', error);

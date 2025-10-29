@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ward Security Alert</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #F9FAFB;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .container {
+      background: white;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+      color: white;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 3px solid #DC2626;
+    }
+
+    .header svg {
+      color: #10B981;
+      flex-shrink: 0;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+    }
+
+    .alert-content {
+      padding: 32px 24px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .alert-icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: #FEE2E2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4);
+      }
+      50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(220, 38, 38, 0);
+      }
+    }
+
+    .alert-icon svg {
+      color: #DC2626;
+    }
+
+    h2 {
+      font-size: 24px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 12px;
+    }
+
+    .summary {
+      font-size: 15px;
+      color: #6B7280;
+      line-height: 1.6;
+      max-width: 500px;
+      margin-bottom: 32px;
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .btn {
+      padding: 14px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: #DC2626;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #B91C1C;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+    }
+
+    .btn-secondary {
+      background: #F3F4F6;
+      color: #374151;
+      border: 1px solid #E5E7EB;
+    }
+
+    .btn-secondary:hover {
+      background: #E5E7EB;
+    }
+
+    .extension-hint {
+      margin-top: 24px;
+      padding: 16px;
+      background: #FFFBEB;
+      border: 1px solid #FDE68A;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #92400E;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      max-width: 500px;
+    }
+
+    .extension-hint svg {
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .extension-hint strong {
+      font-weight: 600;
+    }
+
+    .footer {
+      padding: 16px 24px;
+      background: #F9FAFB;
+      border-top: 1px solid #E5E7EB;
+      text-align: center;
+      font-size: 12px;
+      color: #6B7280;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2L3 6v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V6l-9-4z"></path>
+      </svg>
+      <h1>Ward Security Extension</h1>
+    </div>
+
+    <div class="alert-content">
+      <div class="alert-icon">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      </div>
+
+      <h2>⚠️ Threat Detected</h2>
+      <p class="summary" id="summary">
+        Ward has detected suspicious content on this page. Review the details to protect yourself from potential scams or phishing attempts.
+      </p>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="viewDetailsBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+          View Full Analysis
+        </button>
+        <button class="btn btn-secondary" onclick="window.close()">
+          Dismiss
+        </button>
+      </div>
+
+      <div class="extension-hint">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 16v-4m0-4h.01"></path>
+        </svg>
+        <div>
+          <strong>Alternative:</strong> Click the Ward extension icon in your browser toolbar to view detailed recommendations and take action.
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      Ward Security Extension • Protecting you from online threats
+    </div>
+  </div>
+
+  <script>
+    // Get data from URL parameters
+    const params = new URLSearchParams(window.location.search);
+    const dataStr = params.get('data');
+
+    if (dataStr) {
+      try {
+        const data = JSON.parse(decodeURIComponent(dataStr));
+
+        // Update summary if available
+        if (data.summary) {
+          document.getElementById('summary').textContent = data.summary;
+        }
+
+        // Set up view details button
+        document.getElementById('viewDetailsBtn').onclick = () => {
+          const fullDataStr = encodeURIComponent(JSON.stringify(data));
+          chrome.tabs.create({ url: `details.html?data=${fullDataStr}` });
+          window.close();
+        };
+
+      } catch (error) {
+        console.error('Failed to parse data:', error);
+      }
+    } else {
+      // No data provided, just show generic message
+      document.getElementById('viewDetailsBtn').onclick = () => {
+        window.close();
+      };
+    }
+  </script>
+</body>
+</html>

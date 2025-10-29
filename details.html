@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ward - Threat Analysis Details</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #F9FAFB;
+      color: #111827;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
+      color: white;
+      padding: 32px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .header p {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .content {
+      padding: 32px;
+    }
+
+    .section {
+      margin-bottom: 32px;
+    }
+
+    .section:last-child {
+      margin-bottom: 0;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-content {
+      font-size: 14px;
+      line-height: 1.8;
+      color: #374151;
+    }
+
+    .summary-box {
+      background: #FEF2F2;
+      border-left: 4px solid #DC2626;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+    }
+
+    .summary-box p {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #991B1B;
+    }
+
+    .red-flags {
+      background: #F9FAFB;
+      border: 1px solid #E5E7EB;
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .red-flags ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .red-flags li {
+      padding: 10px 0;
+      border-bottom: 1px solid #E5E7EB;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .red-flags li:last-child {
+      border-bottom: none;
+    }
+
+    .red-flags li::before {
+      content: '⚠️';
+      flex-shrink: 0;
+    }
+
+    .recommendation-box {
+      background: #FFFBEB;
+      border: 2px solid #FCD34D;
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .recommendation-box strong {
+      color: #92400E;
+      font-size: 15px;
+    }
+
+    .meta-info {
+      background: #F9FAFB;
+      border: 1px solid #E5E7EB;
+      border-radius: 8px;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .meta-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #6B7280;
+    }
+
+    .meta-value {
+      font-size: 14px;
+      color: #111827;
+    }
+
+    .close-btn {
+      display: block;
+      margin: 24px auto 0;
+      padding: 12px 24px;
+      background: #F3F4F6;
+      color: #374151;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .close-btn:hover {
+      background: #E5E7EB;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+        Threat Detected
+      </h1>
+      <p>Detailed Analysis Report</p>
+    </div>
+
+    <div class="content">
+      <div class="summary-box">
+        <p id="summary">Loading analysis...</p>
+      </div>
+
+      <div class="section" id="redFlagsSection">
+        <div class="section-title">
+          🚩 Red Flags Detected
+        </div>
+        <div class="red-flags">
+          <ul id="redFlagsList"></ul>
+        </div>
+      </div>
+
+      <div class="section" id="recommendationSection">
+        <div class="section-title">
+          💡 Recommendation
+        </div>
+        <div class="recommendation-box" id="recommendation"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">
+          ℹ️ Analysis Information
+        </div>
+        <div class="meta-info">
+          <div class="meta-item">
+            <div class="meta-label">Detection Method</div>
+            <div class="meta-value" id="method">AI-Powered Detection</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Content Analyzed</div>
+            <div class="meta-value" id="contentSize">0 KB</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Page URL</div>
+            <div class="meta-value" id="pageUrl" style="word-break: break-all;">N/A</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Scan Time</div>
+            <div class="meta-value" id="timestamp">N/A</div>
+          </div>
+        </div>
+      </div>
+
+      <button class="close-btn" onclick="window.close()">Close</button>
+    </div>
+  </div>
+
+  <script>
+    // Get data from URL parameters
+    const params = new URLSearchParams(window.location.search);
+    const dataStr = params.get('data');
+
+    if (dataStr) {
+      try {
+        const data = JSON.parse(decodeURIComponent(dataStr));
+
+        // Populate summary
+        document.getElementById('summary').textContent = data.summary || 'Suspicious content detected.';
+
+        // Populate red flags
+        if (data.details && data.details.length > 0) {
+          const list = document.getElementById('redFlagsList');
+          data.details.forEach(detail => {
+            const li = document.createElement('li');
+            li.textContent = detail;
+            list.appendChild(li);
+          });
+        } else {
+          document.getElementById('redFlagsSection').style.display = 'none';
+        }
+
+        // Populate recommendation
+        if (data.recommendation) {
+          document.getElementById('recommendation').innerHTML = data.recommendation.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        } else {
+          document.getElementById('recommendationSection').style.display = 'none';
+        }
+
+        // Populate meta info
+        if (data.method) {
+          const methodText = data.method === 'ai' ? 'AI-Powered Detection' :
+                            data.method === 'timeout' ? 'Timeout' :
+                            data.method === 'error' ? 'Error' : 'Pattern Matching';
+          document.getElementById('method').textContent = methodText;
+        }
+
+        if (data.contentLength) {
+          const kb = (data.contentLength / 1000).toFixed(1);
+          document.getElementById('contentSize').textContent = `${kb} KB`;
+        }
+
+        if (data.url) {
+          document.getElementById('pageUrl').textContent = data.url;
+        }
+
+        if (data.timestamp) {
+          const date = new Date(data.timestamp);
+          document.getElementById('timestamp').textContent = date.toLocaleString();
+        }
+
+      } catch (error) {
+        console.error('Failed to parse data:', error);
+        document.getElementById('summary').textContent = 'Failed to load analysis details.';
+      }
+    }
+  </script>
+</body>
+</html>
