@@ -8,14 +8,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const statusDescription = document.getElementById('statusDescription');
   const analysisDetails = document.getElementById('analysisDetails');
   const analysisText = document.getElementById('analysisText');
-  const analysisMethod = document.getElementById('analysisMethod');
-  const contentLength = document.getElementById('contentLength');
   const rescanBtn = document.getElementById('rescanBtn');
   const settingsBtn = document.getElementById('settingsBtn');
-  const ignoreActions = document.getElementById('ignoreActions');
   const ignoreUrlBtn = document.getElementById('ignoreUrlBtn');
   const ignoreDomainBtn = document.getElementById('ignoreDomainBtn');
-  const viewDetailsBtn = document.getElementById('viewDetailsBtn');
 
   // Get current tab
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -179,29 +175,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         analysisText.textContent = 'Exercise caution when interacting with this content.';
       }
 
-      // Show "View Full Analysis" button and store data for details page
-      if (details.length > 0 || recommendation) {
-        viewDetailsBtn.classList.remove('hidden');
+      // Make recommendation box clickable to open full analysis
+      const analysisData = {
+        summary: summary,
+        details: details,
+        recommendation: recommendation,
+        method: result.method,
+        contentLength: result.contentLength,
+        url: tab.url,
+        timestamp: Date.now()
+      };
 
-        // Store analysis data for details page
-        const analysisData = {
-          summary: summary,
-          details: details,
-          recommendation: recommendation,
-          method: result.method,
-          contentLength: result.contentLength,
-          url: tab.url,
-          timestamp: Date.now()
-        };
+      analysisText.onclick = () => {
+        const dataStr = encodeURIComponent(JSON.stringify(analysisData));
+        chrome.tabs.create({ url: `details.html?data=${dataStr}` });
+      };
 
-        viewDetailsBtn.onclick = () => {
-          const dataStr = encodeURIComponent(JSON.stringify(analysisData));
-          chrome.tabs.create({ url: `details.html?data=${dataStr}` });
-        };
-      }
-
-      // Show ignore options
-      ignoreActions.classList.remove('hidden');
+      // Show ignore buttons
+      ignoreUrlBtn.classList.remove('hidden');
+      ignoreDomainBtn.classList.remove('hidden');
     } else {
       // Safe content
       statusIcon.className = 'status-icon safe';
@@ -213,29 +205,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       statusTitle.textContent = 'Page is Safe';
       statusDescription.textContent = 'No threats detected on this page.';
 
-      // Show simple analysis
-      if (result.analysis) {
-        analysisDetails.classList.remove('hidden');
-        analysisText.textContent = result.analysis;
-      } else {
-        analysisDetails.classList.add('hidden');
-      }
+      // Hide analysis for safe content
+      analysisDetails.classList.add('hidden');
 
-      // Hide ignore options
-      ignoreActions.classList.add('hidden');
-    }
-
-    // Update metadata
-    if (result.method) {
-      const methodText = result.method === 'ai' ? 'AI-Powered Detection' :
-                        result.method === 'timeout' ? 'Timeout' :
-                        result.method === 'error' ? 'Error' : 'Pattern Matching';
-      analysisMethod.textContent = methodText;
-    }
-
-    if (result.contentLength) {
-      const kb = (result.contentLength / 1000).toFixed(1);
-      contentLength.textContent = `${kb}KB analyzed`;
+      // Hide ignore buttons
+      ignoreUrlBtn.classList.add('hidden');
+      ignoreDomainBtn.classList.add('hidden');
     }
   }
 
