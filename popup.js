@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Show analysis details with structured format
       analysisDetails.classList.remove('hidden');
 
-      // Only show recommendation in popup
+      // Only show recommendation in popup (abbreviated)
       if (recommendation) {
         // Format bold text
         const formattedRec = recommendation.trim().replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
@@ -175,20 +175,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         analysisText.textContent = 'Exercise caution when interacting with this content.';
       }
 
-      // Make recommendation box clickable to open full analysis
-      const analysisData = {
-        summary: summary,
-        details: details,
-        recommendation: recommendation,
-        method: result.method,
-        contentLength: result.contentLength,
-        url: tab.url,
-        timestamp: Date.now()
-      };
+      // Populate expanded details section
+      const expandedDetails = document.getElementById('expandedDetails');
+      const redFlagsSection = document.getElementById('redFlagsSection');
+      const fullRecommendationSection = document.getElementById('fullRecommendationSection');
 
+      // Add red flags if available
+      if (details.length > 0) {
+        redFlagsSection.innerHTML = '<h4>🚩 Red Flags</h4><ul>' +
+          details.map(detail => `<li>${detail}</li>`).join('') +
+          '</ul>';
+      } else {
+        redFlagsSection.innerHTML = '';
+      }
+
+      // Add full recommendation
+      if (recommendation) {
+        const formattedFullRec = recommendation.trim().replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        fullRecommendationSection.innerHTML = `<h4>💡 Full Analysis</h4><div class="recommendation-text">${formattedFullRec}</div>`;
+      } else {
+        fullRecommendationSection.innerHTML = '';
+      }
+
+      // Make recommendation box clickable to toggle accordion
       analysisText.onclick = () => {
-        const dataStr = encodeURIComponent(JSON.stringify(analysisData));
-        chrome.tabs.create({ url: `details.html?data=${dataStr}` });
+        expandedDetails.classList.toggle('open');
       };
 
       // Show ignore buttons

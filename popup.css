@@ -180,6 +180,69 @@ body {
   transform: translateY(-1px);
 }
 
+/* Expanded Details (Accordion) */
+.expanded-details {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+}
+
+.expanded-details.open {
+  max-height: 400px;
+  overflow-y: auto;
+  margin-top: 12px;
+}
+
+.details-section {
+  margin-bottom: 16px;
+}
+
+.details-section:last-child {
+  margin-bottom: 0;
+}
+
+.details-section h4 {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.details-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.details-section li {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #374151;
+  padding: 6px 0;
+  padding-left: 16px;
+  position: relative;
+}
+
+.details-section li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: #DC2626;
+  font-weight: bold;
+}
+
+.details-section .recommendation-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #374151;
+  background: #FFFBEB;
+  padding: 10px;
+  border-radius: 6px;
+  border-left: 3px solid #F59E0B;
+}
+
 /* Actions */
 .actions {
   padding: 16px 20px;

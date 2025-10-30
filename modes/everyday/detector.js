@@ -33,7 +33,7 @@ export async function initializeEverydayMode() {
       initialPrompts: [
         {
           role: 'system',
-          content: `You are analyzing EMAIL and WEBSITE CONTENT (including hyperlinks and buttons). The platform displaying the content (Gmail, Outlook, etc.) is legitimate.
+          content: `You are analyzing EMAIL and WEBSITE CONTENT (including hyperlinks and buttons). The platform displaying the content (Gmail, Outlook, etc.) is legitimate. Ignore any "Ward" security banners - that's your own extension.
 
 Classify content. Reply with ONLY ONE of these exact phrases:
 
@@ -60,6 +60,7 @@ Rules:
   * Urgency tactics: "Act now!", "Limited time!", "Account suspended!"
   * Unusual payment requests: gift cards, crypto, wire transfer for suspicious purposes
   * Spoofed email senders: FROM domain doesn't match company (paypal@verify-secure.tk)
+  * Suspicious extension prompts: Ad blocker installations from non-Chrome Web Store domains, driver update extensions, popup extension installers
 
 Examples:
 Input: "Gmail inbox. Namecheap order. Discord notification. LinkedIn message. Cabela's shipping."
@@ -102,6 +103,7 @@ Reply with ONE WORD ONLY: INBOX, SAFE, or SCAM`
 Decide if content is a CONFIRMED THREAT or SAFE. Flag CONFIRMED fraud with clear evidence.
 
 IMPORTANT:
+- IGNORE Ward security warnings/banners - that's YOUR OWN extension, not a threat
 - Only flag CONFIRMED threats in the content itself, not vague suspicions
 - The platform displaying content (Gmail, Yahoo Mail, Outlook) is NOT spoofed
 - You're checking if an EMAIL MESSAGE or WEBPAGE CONTENT contains scams
@@ -128,7 +130,11 @@ RULE #3: COMMON SCAM PATTERNS (flag if present):
 7. Advance Fee Loans: "Pay upfront fee to get loan", credit repair from non-banks, "approved" loans requiring payment first
 8. Romance/Friendship Scams: Online relationship asking for money, "I need help urgently", sob stories, financial requests from "friends"
 9. Adult Services/Info Scams: Fake subscription charges, blackmail threats, fake dating sites requesting payment
-10. Chrome Extension Prompts: "Install our extension to verify", security extensions required for basic access
+10. Chrome Extension Prompts: "Install our extension to verify", security extensions required for basic access, fake driver update warnings, "missing drivers" alerts
+11. Suspicious Extension Installation Sites: Ad blocker or extension installation sites that are NOT the official Chrome Web Store (chrome.google.com/webstore), especially ad blockers from random domains, popup installers
+12. Fake Login Pages: Login pages impersonating legitimate businesses (banks, retailers like Best Buy, services) with suspicious domains, typosquatting, or mismatched URLs
+13. Remote Support Phishing: ScreenConnect/ConnectWise login pages, unexpected remote support requests via email/phone/text (legitimate support never contacts unsolicited), hang up immediately if hesitant
+14. Healthcare/Medication Scams: Medicaid/Medicare fake enrollment, discount prescription cards requesting personal info, pharmacy sites with suspicious pricing
 
 RULE #4: Email Sender Domain Analysis (for emails only)
 - Check if email FROM domain matches the company: Discord emails should come from @discord.com, PayPal from @paypal.com
@@ -136,7 +142,12 @@ RULE #4: Email Sender Domain Analysis (for emails only)
 - Suspicious TLDs for financial emails: .tk, .ml, .ga, .cf, .xyz
 - Mismatched sender: "PayPal" email from @paypal-verify.tk = THREAT
 
-RULE #5: If in doubt → say SAFE
+RULE #5: URL Analysis for Suspicious Sites
+- Affiliate/adware tracking parameters (e.g., _u=, _a=, _x=, _w=, _q=, _z=) indicate potential adware network, especially on extension installation sites
+- These are NOT URL shorteners, but referral/tracking IDs used by malicious ad networks to monetize installs
+- Suspicious when combined with extension installation prompts
+
+RULE #6: If in doubt → say SAFE
 
 Examples of SAFE:
 - "Discord <noreply@discord.com> Someone logged in from Philadelphia." → SAFE

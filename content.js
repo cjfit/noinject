@@ -67,6 +67,11 @@ function extractVisibleContent() {
         const parent = node.parentElement;
         if (!parent) return NodeFilter.FILTER_REJECT;
 
+        // Skip Ward extension's own banner
+        if (parent.id === 'ward-warning-banner' || parent.closest('#ward-warning-banner')) {
+          return NodeFilter.FILTER_REJECT;
+        }
+
         // Skip scripts, styles, etc.
         const tagName = parent.tagName.toLowerCase();
         if (['script', 'style', 'noscript', 'iframe'].includes(tagName)) {
@@ -149,8 +154,11 @@ function showWarningBanner(analysisResult) {
   let details = '';
   let recommendation = '';
 
+  // If judgment contains "SAFE" anywhere, remove the summary body and just show generic threat message
+  const containsSafe = fullJudgment.toUpperCase().includes('SAFE');
+
   // Parse the judgment structure
-  if (lines.length > 1) {
+  if (lines.length > 1 && !containsSafe) {
     // Skip "THREAT" line if present, get summary from line 2
     const startIndex = lines[0].toUpperCase().includes('THREAT') ? 1 : 0;
 
@@ -162,6 +170,7 @@ function showWarningBanner(analysisResult) {
     // Collect bullet points (lines starting with *)
     const bulletPoints = [];
     let recommendationStarted = false;
+    let fullRecommendationText = '';
 
     for (let i = startIndex + 1; i < lines.length; i++) {
       const line = lines[i].trim();
@@ -169,11 +178,23 @@ function showWarningBanner(analysisResult) {
       // Check if we've reached the recommendation section (starts with **)
       if (line.includes('**')) {
         recommendationStarted = true;
-        recommendation += line + ' ';
+        fullRecommendationText += line + ' ';
       } else if (recommendationStarted) {
-        recommendation += line + ' ';
+        fullRecommendationText += line + ' ';
       } else if (line.startsWith('*')) {
         bulletPoints.push(line.substring(1).trim());
+      }
+    }
+
+    // Extract only the last sentence for abbreviated recommendation
+    if (fullRecommendationText.trim()) {
+      const sentences = fullRecommendationText.trim().split(/[.!?]+\s+/);
+      // Get the last non-empty sentence
+      const lastSentence = sentences.filter(s => s.trim()).pop();
+      recommendation = lastSentence ? lastSentence.trim() : fullRecommendationText.trim();
+      // Add period back if it was removed by split
+      if (recommendation && !recommendation.match(/[.!?]$/)) {
+        recommendation += '.';
       }
     }
 
