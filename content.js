@@ -126,6 +126,48 @@ function extractVisibleContent() {
   return fullText;
 }
 
+// Extract images from the page for visual analysis
+function extractPageImages() {
+  const images = [];
+  const maxImages = 5; // Limit to 5 images
+
+  // Get all img elements
+  const imgElements = document.querySelectorAll('img');
+
+  for (const img of imgElements) {
+    if (images.length >= maxImages) break;
+
+    // Skip Ward banner images
+    if (img.closest('#ward-warning-banner')) continue;
+
+    // Skip very small images (likely icons/tracking pixels)
+    if (img.width < 50 || img.height < 50) continue;
+
+    // Skip if not visible
+    const rect = img.getBoundingClientRect();
+    const style = window.getComputedStyle(img);
+    if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') continue;
+    if (rect.width === 0 || rect.height === 0) continue;
+
+    // Try to get the image source
+    const src = img.currentSrc || img.src;
+    if (src && src.startsWith('http')) {
+      images.push({
+        src: src,
+        alt: img.alt || '',
+        width: img.width,
+        height: img.height
+      });
+    }
+  }
+
+  // Note: We intentionally skip CSS background images as they're typically decorative
+  // and not useful for scam detection (e.g., page backgrounds, gradient overlays)
+
+  console.log(`[Ward] Extracted ${images.length} images from page`);
+  return images;
+}
+
 // Show threat notification banner
 function showThreatNotification() {
   // Get the latest analysis result from the response
@@ -369,6 +411,7 @@ async function analyzePage() {
 
     const content = extractVisibleContent();
     const links = extractVisibleLinks();
+    const images = extractPageImages(); // Extract images for visual analysis
 
     if (!content || content.length < 50) {
       console.log('[Ward] Not enough content to analyze (< 50 chars)');
@@ -399,13 +442,15 @@ async function analyzePage() {
 
     console.log(`[Ward] Starting analysis of ${content.length} characters...`);
     console.log(`[Ward] Found ${links.length} links`);
+    console.log(`[Ward] Found ${images.length} images`);
     console.log(`[Ward] Content preview:`, content.substring(0, 200) + '...');
     console.log(`[Ward] FULL CONTENT FOR DEBUGGING:`, enhancedContent);
 
     // Send content to background script for analysis
     const response = await chrome.runtime.sendMessage({
       action: 'analyzeContent',
-      content: enhancedContent
+      content: enhancedContent,
+      images: images
     });
 
     console.log('[Ward] Analysis complete:', {

@@ -92,9 +92,17 @@ Reply with ONE WORD ONLY: INBOX, SAFE, or SCAM`
     console.log('[Ward Everyday] Analyzer session created successfully');
 
     // Stage 2: Judge session - validates if it's a real threat or false positive
+    // Configure for multimodal input (text + images)
     const judgeSession = await self.LanguageModel.create({
       temperature: 0.6,
       topK: 30,
+      expectedInputs: [
+        { type: "text", languages: ["en"] },
+        { type: "image", languages: ["en"] }
+      ],
+      expectedOutputs: [
+        { type: "text", languages: ["en"] }
+      ],
       initialPrompts: [
         {
           role: 'system',
@@ -147,7 +155,14 @@ RULE #5: URL Analysis for Suspicious Sites
 - These are NOT URL shorteners, but referral/tracking IDs used by malicious ad networks to monetize installs
 - Suspicious when combined with extension installation prompts
 
-RULE #6: If in doubt → say SAFE
+RULE #6: Visual/Image Analysis (if images provided)
+- Logo on mismatched domain: Perfect PayPal logo on non-paypal.com domain, bank logo on suspicious site
+- Low quality images: Pixelated, blurry, or heavy JPEG artifacts on logos/badges (especially on credential request pages)
+- Outdated brand logos: Old logo versions from companies that rebranded years ago
+- Screenshot artifacts: Browser chrome, taskbars, watermarks, or mouse cursor visible in images
+- Excessive trust badges: Multiple security badges (Norton, McAfee, BBB, "Verified") clustered together (legitimate sites use 1-2 max)
+
+RULE #7: If in doubt → say SAFE
 
 Examples of SAFE:
 - "Discord <noreply@discord.com> Someone logged in from Philadelphia." → SAFE
@@ -198,11 +213,12 @@ Respond: SAFE or use the THREAT format above`
   }
 }
 
-export async function analyzeEveryday(analyzerSession, judgeSession, content, url = 'unknown') {
+export async function analyzeEveryday(analyzerSession, judgeSession, content, url = 'unknown', images = []) {
   console.log('[Ward Everyday] analyzeEveryday called with:', {
     hasAnalyzerSession: !!analyzerSession,
     hasJudgeSession: !!judgeSession,
     contentLength: content.length,
+    imageCount: images.length,
     url: url
   });
 
@@ -278,21 +294,35 @@ export async function analyzeEveryday(analyzerSession, judgeSession, content, ur
 
     let judgment;
     try {
-      const judgmentPrompt = `The analyzer classified this as a potential SCAM. Review if this is truly dangerous or a false positive.
+      let judgmentPrompt = `The analyzer classified this as a potential SCAM. Review if this is truly dangerous or a false positive.
 
 URL: ${url}
 
 Content preview:
-${trimmedContent.substring(0, 1000)}
+${trimmedContent.substring(0, 1000)}`;
 
-Is this a real THREAT or SAFE?`;
+      // Add image information if images are provided
+      if (images && images.length > 0) {
+        judgmentPrompt += `\n\nImages found on page (${images.length} total):\n`;
+        images.forEach((img, i) => {
+          judgmentPrompt += `Image ${i + 1}: ${img.src} (${img.width}x${img.height}) ${img.alt ? `Alt: "${img.alt}"` : ''}\n`;
+        });
+        judgmentPrompt += `\nAnalyze the images for visual red flags (logo mismatches, low quality, outdated branding, screenshot artifacts, excessive badges).`;
+      }
+
+      judgmentPrompt += `\n\nIs this a real THREAT or SAFE?`;
 
       console.log('[Ward Everyday Stage 2] ===== FULL JUDGE INPUT =====');
       console.log('[Ward Everyday Stage 2] Prompt being sent to judge:');
       console.log(judgmentPrompt);
+      console.log('[Ward Everyday Stage 2] Images:', images.length);
       console.log('[Ward Everyday Stage 2] ===== END JUDGE INPUT =====');
 
-      const judgmentPromiseRaw = judgeSession.prompt(judgmentPrompt);
+      // For multimodal prompts, pass images as part of the prompt
+      const judgmentPromiseRaw = images && images.length > 0
+        ? judgeSession.prompt(judgmentPrompt, { images })
+        : judgeSession.prompt(judgmentPrompt);
+
       const timeoutPromise2 = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Judgment timed out after 30 seconds')), 30000)
       );

@@ -75,7 +75,7 @@ async function initializeAI() {
 }
 
 // Analyze content using current mode
-async function analyzeContent(content, url = 'unknown') {
+async function analyzeContent(content, url = 'unknown', images = []) {
   if (!isAiAvailable) {
     console.error('[Ward] AI not available - cannot analyze');
     return {
@@ -97,13 +97,15 @@ async function analyzeContent(content, url = 'unknown') {
         hasAnalyzer: !!everydaySessions.analyzerSession,
         hasJudge: !!everydaySessions.judgeSession,
         contentLength: content.length,
+        imageCount: images.length,
         url: url
       });
       const result = await analyzeEveryday(
         everydaySessions.analyzerSession,
         everydaySessions.judgeSession,
         content,
-        url
+        url,
+        images
       );
       console.log('[Ward] analyzeEveryday returned:', result);
       return result;
@@ -174,6 +176,7 @@ async function shouldIgnoreUrl(url) {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'analyzeContent') {
     const content = request.content;
+    const images = request.images || [];
     const url = sender.tab?.url || 'unknown';
 
     // Check if content script marked this as skipped
@@ -288,7 +291,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
       }, 60000); // 60 second overall timeout
 
-      analyzeContent(content, url).then(result => {
+      analyzeContent(content, url, images).then(result => {
         // Check if analysis was cancelled while running
         if (analysisTracker.cancelled) {
           console.log(`[Ward] Analysis cancelled for tab ${tabId}, discarding results`);
