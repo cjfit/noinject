@@ -33,7 +33,14 @@ export async function initializeEverydayMode() {
       initialPrompts: [
         {
           role: 'system',
-          content: `You are analyzing EMAIL and WEBSITE CONTENT (including hyperlinks and buttons). The platform displaying the content (Gmail, Outlook, etc.) is legitimate. Ignore any "Ward" security banners - that's your own extension.
+          content: `You are analyzing content in TWO scenarios:
+1. MESSAGE CONTENT: Emails, posts, or messages within platforms (Gmail, Outlook, Facebook, etc.)
+2. WEBSITE CONTENT: Standalone web pages (stores, articles, landing pages, etc.)
+
+IMPORTANT SCOPE:
+- For MESSAGE CONTENT: The platform itself (Gmail, Outlook, etc.) is OUT OF SCOPE. Analyze the message/email/post content ONLY.
+- For WEBSITE CONTENT: Analyze the entire page content for scams or threats.
+- Ignore any "Ward" security banners - that's your own extension.
 
 Classify content. Reply with ONLY ONE of these exact phrases:
 
@@ -92,29 +99,25 @@ Reply with ONE WORD ONLY: INBOX, SAFE, or SCAM`
     console.log('[Ward Everyday] Analyzer session created successfully');
 
     // Stage 2: Judge session - validates if it's a real threat or false positive
-    // Configure for multimodal input (text + images)
     const judgeSession = await self.LanguageModel.create({
       temperature: 0.6,
       topK: 30,
-      expectedInputs: [
-        { type: "text", languages: ["en"] },
-        { type: "image", languages: ["en"] }
-      ],
-      expectedOutputs: [
-        { type: "text", languages: ["en"] }
-      ],
       initialPrompts: [
         {
           role: 'system',
-          content: `You are analyzing EMAIL and WEBSITE CONTENT (including hyperlinks and buttons). The website/platform itself (Gmail, Outlook, news sites) is LEGITIMATE. Judge if the CONTENT SHOWN is a threat.
+          content: `You are analyzing content in TWO scenarios:
+1. MESSAGE CONTENT: Individual emails, posts, or messages within platforms (Gmail, Outlook, Facebook, etc.)
+2. WEBSITE CONTENT: Standalone web pages (stores, articles, landing pages, login pages, etc.)
 
-Decide if content is a CONFIRMED THREAT or SAFE. Flag CONFIRMED fraud with clear evidence.
+CRITICAL SCOPE DEFINITION:
+- For MESSAGE CONTENT: The platform itself (Gmail, Outlook, Yahoo Mail, Facebook, etc.) is OUT OF SCOPE and LEGITIMATE. Focus ONLY on analyzing the message/email/post content displayed within the platform. The platform URL is irrelevant.
+- For WEBSITE CONTENT: Analyze the entire page for scams, fake login pages, suspicious stores, etc. The website URL and domain ARE relevant.
+
+Decide if the content is a CONFIRMED THREAT or SAFE. Flag CONFIRMED fraud with clear evidence.
 
 IMPORTANT:
 - IGNORE Ward security warnings/banners - that's YOUR OWN extension, not a threat
 - Only flag CONFIRMED threats in the content itself, not vague suspicions
-- The platform displaying content (Gmail, Yahoo Mail, Outlook) is NOT spoofed
-- You're checking if an EMAIL MESSAGE or WEBPAGE CONTENT contains scams
 - Links are shown as: [LINK] "text" → url or [BUTTON] "text" → url
 - Check link URLs for suspicious domains, typosquatting, or mismatches with button text
 
@@ -155,14 +158,7 @@ RULE #5: URL Analysis for Suspicious Sites
 - These are NOT URL shorteners, but referral/tracking IDs used by malicious ad networks to monetize installs
 - Suspicious when combined with extension installation prompts
 
-RULE #6: Visual/Image Analysis (if images provided)
-- Logo on mismatched domain: Perfect PayPal logo on non-paypal.com domain, bank logo on suspicious site
-- Low quality images: Pixelated, blurry, or heavy JPEG artifacts on logos/badges (especially on credential request pages)
-- Outdated brand logos: Old logo versions from companies that rebranded years ago
-- Screenshot artifacts: Browser chrome, taskbars, watermarks, or mouse cursor visible in images
-- Excessive trust badges: Multiple security badges (Norton, McAfee, BBB, "Verified") clustered together (legitimate sites use 1-2 max)
-
-RULE #7: If in doubt → say SAFE
+RULE #6: If in doubt → say SAFE
 
 Examples of SAFE:
 - "Discord <noreply@discord.com> Someone logged in from Philadelphia." → SAFE
@@ -213,12 +209,11 @@ Respond: SAFE or use the THREAT format above`
   }
 }
 
-export async function analyzeEveryday(analyzerSession, judgeSession, content, url = 'unknown', images = []) {
+export async function analyzeEveryday(analyzerSession, judgeSession, content, url = 'unknown') {
   console.log('[Ward Everyday] analyzeEveryday called with:', {
     hasAnalyzerSession: !!analyzerSession,
     hasJudgeSession: !!judgeSession,
     contentLength: content.length,
-    imageCount: images.length,
     url: url
   });
 
@@ -294,34 +289,21 @@ export async function analyzeEveryday(analyzerSession, judgeSession, content, ur
 
     let judgment;
     try {
-      let judgmentPrompt = `The analyzer classified this as a potential SCAM. Review if this is truly dangerous or a false positive.
+      const judgmentPrompt = `The analyzer classified this as a potential SCAM. Review if this is truly dangerous or a false positive.
 
 URL: ${url}
 
 Content preview:
-${trimmedContent.substring(0, 1000)}`;
+${trimmedContent.substring(0, 1000)}
 
-      // Add image information if images are provided
-      if (images && images.length > 0) {
-        judgmentPrompt += `\n\nImages found on page (${images.length} total):\n`;
-        images.forEach((img, i) => {
-          judgmentPrompt += `Image ${i + 1}: ${img.src} (${img.width}x${img.height}) ${img.alt ? `Alt: "${img.alt}"` : ''}\n`;
-        });
-        judgmentPrompt += `\nAnalyze the images for visual red flags (logo mismatches, low quality, outdated branding, screenshot artifacts, excessive badges).`;
-      }
-
-      judgmentPrompt += `\n\nIs this a real THREAT or SAFE?`;
+Is this a real THREAT or SAFE?`;
 
       console.log('[Ward Everyday Stage 2] ===== FULL JUDGE INPUT =====');
       console.log('[Ward Everyday Stage 2] Prompt being sent to judge:');
       console.log(judgmentPrompt);
-      console.log('[Ward Everyday Stage 2] Images:', images.length);
       console.log('[Ward Everyday Stage 2] ===== END JUDGE INPUT =====');
 
-      // For multimodal prompts, pass images as part of the prompt
-      const judgmentPromiseRaw = images && images.length > 0
-        ? judgeSession.prompt(judgmentPrompt, { images })
-        : judgeSession.prompt(judgmentPrompt);
+      const judgmentPromiseRaw = judgeSession.prompt(judgmentPrompt);
 
       const timeoutPromise2 = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Judgment timed out after 30 seconds')), 30000)
