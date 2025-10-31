@@ -157,7 +157,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         </svg>
       `;
       statusTitle.textContent = 'Threat Detected';
-      statusDescription.textContent = summary;
+      // Format bold text in summary with ** markers
+      const formattedSummary = summary.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      statusDescription.innerHTML = formattedSummary;
 
       // Show analysis details with structured format
       analysisDetails.classList.remove('hidden');

@@ -199,7 +199,7 @@ function showWarningBanner(analysisResult) {
       top: 0;
       left: 0;
       right: 0;
-      background: #ff7f32;
+      background: #E03C31;
       color: white;
       padding: 16px 20px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -218,17 +218,11 @@ function showWarningBanner(analysisResult) {
         </svg>
         <div style="text-align: center; flex: 1;">
           <div style="font-weight: 600; margin-bottom: 4px; font-size: 15px;">
-            ${summary}
+            ${recommendation}
           </div>
           <div style="font-size: 13px; opacity: 0.95;">
             Open the Ward extension for details
           </div>
-        </div>
-        <div style="position: absolute; right: 80px; display: flex; flex-direction: column; align-items: center; gap: 4px;">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation: bounce 1.5s ease-in-out infinite;">
-            <path d="M12 19V5M5 12l7-7 7 7"></path>
-          </svg>
-          <div style="font-size: 11px; font-weight: 500; opacity: 0.9;">Click extension</div>
         </div>
         <button id="ward-close-banner" style="
           background: rgba(255, 255, 255, 0.2);
@@ -308,6 +302,30 @@ async function analyzePage() {
 
     // Skip email inbox list views - only analyze individual message views
     const url = window.location.href;
+
+    // Skip Chrome internal pages (chrome://, chrome-extension://, etc.)
+    if (url.startsWith('chrome://') || url.startsWith('chrome-extension://') || url.startsWith('about:')) {
+      console.log('[Ward] Skipping Chrome internal page:', url);
+      await chrome.runtime.sendMessage({
+        action: 'analyzeContent',
+        content: '',
+        skipped: true
+      });
+      return;
+    }
+
+    // Skip internal/private IP addresses
+    const hostname = window.location.hostname;
+    const isPrivateIP = /^(localhost|127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|::1|fe80:)/.test(hostname);
+    if (isPrivateIP) {
+      console.log('[Ward] Skipping private/internal IP address:', hostname);
+      await chrome.runtime.sendMessage({
+        action: 'analyzeContent',
+        content: '',
+        skipped: true
+      });
+      return;
+    }
 
     // Gmail: Skip inbox list, only analyze individual messages
     if (url.includes('mail.google.com')) {

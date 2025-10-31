@@ -70,6 +70,7 @@ Rules:
   * Unusual payment requests: gift cards, crypto, wire transfer for suspicious purposes
   * Spoofed email senders: FROM domain doesn't match company (paypal@verify-secure.tk)
   * Suspicious extension prompts: Ad blocker installations from non-Chrome Web Store domains, driver update extensions, popup extension installers
+  * Fake login pages on suspicious domains: random letter/number strings (xj7k2m.replit.app), website builders (wix.com, weebly.com, replit.app, netlify.app, glitch.me), especially if requesting credentials for known brands
 
 Examples:
 Input: "Gmail inbox. Namecheap order. Discord notification. LinkedIn message. Cabela's shipping."
@@ -152,8 +153,9 @@ RULE #3: COMMON SCAM PATTERNS (flag if present):
 10. Chrome Extension Prompts: "Install our extension to verify", security extensions required for basic access, fake driver update warnings, "missing drivers" alerts
 11. Suspicious Extension Installation Sites: Ad blocker or extension installation sites that are NOT the official Chrome Web Store (chrome.google.com/webstore), especially ad blockers from random domains, popup installers
 12. Fake Login Pages: Login pages impersonating legitimate businesses (banks, retailers like Best Buy, services) with suspicious domains, typosquatting, or mismatched URLs
-13. Remote Support Phishing: ScreenConnect/ConnectWise login pages, unexpected remote support requests via email/phone/text (legitimate support never contacts unsolicited), hang up immediately if hesitant
+13. Remote Support Phishing: ScreenConnect/ConnectWise login pages, unexpected remote support requests via email/phone/text (legitimate support never contacts unsolicited)
 14. Healthcare/Medication Scams: Medicaid/Medicare fake enrollment, discount prescription cards requesting personal info, pharmacy sites with suspicious pricing
+15. Suspicious Domain Login Pages: Login forms for known brands hosted on website builders (replit.app, netlify.app, glitch.me, wix.com, weebly.com) or domains with random letter/number strings (abc123xyz.site, xk7m2n.netlify.app)
 
 RULE #4: Email Sender Domain Analysis (for emails only)
 - Check if email FROM domain matches the company: Discord emails should come from @discord.com, PayPal from @paypal.com
@@ -336,7 +338,8 @@ Is this a real THREAT or SAFE?`;
     }
 
     // Check if the FIRST LINE (not the entire text) starts with THREAT or SAFE
-    const firstLine = judgment.trim().split('\n')[0].trim().toUpperCase();
+    // Strip any ** markdown formatting first
+    const firstLine = judgment.trim().split('\n')[0].trim().replace(/\*\*/g, '').toUpperCase();
     const isThreat = firstLine.startsWith('THREAT');
 
     console.log('[Ward Everyday Stage 2] Final decision:', {
