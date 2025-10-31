@@ -162,22 +162,71 @@ body {
   line-height: 1.6;
   color: #374151;
   background: #F9FAFB;
-  padding: 12px;
+  padding: 0;
   border-radius: 8px;
   border: 1px solid #E5E7EB;
   max-height: 150px;
   overflow-y: auto;
-}
-
-.analysis-text.clickable {
   cursor: pointer;
-  transition: all 0.2s;
 }
 
-.analysis-text.clickable:hover {
+/* Prominent Action Box */
+.action-box {
+  background: #FEE2E2;
+  border: 2px solid #DC2626;
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.action-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: #991B1B;
+  line-height: 1.4;
+  flex: 1;
+}
+
+.info-btn {
+  background: #DC2626;
+  border: none;
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.info-btn:hover {
+  background: #B91C1C;
+}
+
+.info-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Full recommendation text (hidden initially) */
+.full-recommendation {
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #374151;
+  display: none;
+}
+
+.analysis-text:hover {
   background: #F3F4F6;
   border-color: #D1D5DB;
-  transform: translateY(-1px);
 }
 
 /* Expanded Details (Accordion) */

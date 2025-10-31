@@ -147,7 +147,7 @@ function showWarningBanner(analysisResult) {
   // Line 1: THREAT
   // Line 2: Summary sentence
   // Lines 3+: Bullet points with *
-  // Last section: **Recommendation** with explanation
+  // Last line: Final recommendation (always use ONLY the last line)
 
   const lines = fullJudgment.split('\n').filter(line => line.trim());
   let summary = 'Suspicious content detected.';
@@ -167,34 +167,17 @@ function showWarningBanner(analysisResult) {
       summary = lines[startIndex].trim();
     }
 
-    // Collect bullet points (lines starting with *)
-    const bulletPoints = [];
-    let recommendationStarted = false;
-    let fullRecommendationText = '';
-
-    for (let i = startIndex + 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-
-      // Check if we've reached the recommendation section (starts with **)
-      if (line.includes('**')) {
-        recommendationStarted = true;
-        fullRecommendationText += line + ' ';
-      } else if (recommendationStarted) {
-        fullRecommendationText += line + ' ';
-      } else if (line.startsWith('*')) {
-        bulletPoints.push(line.substring(1).trim());
-      }
+    // The last line is ALWAYS the recommendation to show in the banner
+    if (lines.length > 0) {
+      recommendation = lines[lines.length - 1].trim();
     }
 
-    // Extract only the last sentence for abbreviated recommendation
-    if (fullRecommendationText.trim()) {
-      const sentences = fullRecommendationText.trim().split(/[.!?]+\s+/);
-      // Get the last non-empty sentence
-      const lastSentence = sentences.filter(s => s.trim()).pop();
-      recommendation = lastSentence ? lastSentence.trim() : fullRecommendationText.trim();
-      // Add period back if it was removed by split
-      if (recommendation && !recommendation.match(/[.!?]$/)) {
-        recommendation += '.';
+    // Collect bullet points (lines starting with * but not the last line)
+    const bulletPoints = [];
+    for (let i = startIndex + 1; i < lines.length - 1; i++) {
+      const line = lines[i].trim();
+      if (line.startsWith('*') && !line.startsWith('**')) {
+        bulletPoints.push(line.substring(1).trim());
       }
     }
 
@@ -216,7 +199,7 @@ function showWarningBanner(analysisResult) {
       top: 0;
       left: 0;
       right: 0;
-      background: linear-gradient(135deg, #2563EB 0%, #1E40AF 100%);
+      background: #ff7f32;
       color: white;
       padding: 16px 20px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -227,40 +210,37 @@ function showWarningBanner(analysisResult) {
       max-height: 400px;
       overflow-y: auto;
     ">
-      <div style="display: flex; align-items: flex-start; gap: 12px;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; margin-top: 2px;">
+      <div style="display: flex; align-items: center; justify-content: center; gap: 16px; max-width: 900px; margin: 0 auto; position: relative;">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;">
           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
           <line x1="12" y1="9" x2="12" y2="13"></line>
           <line x1="12" y1="17" x2="12.01" y2="17"></line>
         </svg>
-        <div style="flex: 1;">
-          <div style="display: flex; justify-content: space-between; align-items: start;">
-            <div style="flex: 1;">
-              <div style="font-weight: 600; margin-bottom: 4px;">
-                ${summary}
-              </div>
-              <div style="font-size: 13px; opacity: 0.95;">
-                Open the Ward extension for details
-              </div>
-            </div>
-            <button id="ward-close-banner" style="
-              background: rgba(255, 255, 255, 0.2);
-              border: none;
-              color: white;
-              padding: 6px 12px;
-              border-radius: 6px;
-              cursor: pointer;
-              font-size: 12px;
-              font-weight: 500;
-              transition: background 0.2s;
-              flex-shrink: 0;
-              margin-left: 12px;
-            " onmouseover="this.style.background='rgba(255,255,255,0.3)'"
-               onmouseout="this.style.background='rgba(255,255,255,0.2)'">
-              Dismiss
-            </button>
+        <div style="text-align: center; flex: 1;">
+          <div style="font-weight: 600; margin-bottom: 4px; font-size: 15px;">
+            ${summary}
+          </div>
+          <div style="font-size: 13px; opacity: 0.95;">
+            Open the Ward extension for details
           </div>
         </div>
+        <button id="ward-close-banner" style="
+          background: rgba(255, 255, 255, 0.2);
+          border: none;
+          color: white;
+          padding: 6px 12px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 12px;
+          font-weight: 500;
+          transition: background 0.2s;
+          flex-shrink: 0;
+          position: absolute;
+          right: 0;
+        " onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+           onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+          Dismiss
+        </button>
       </div>
     </div>
     <style>
@@ -425,7 +405,7 @@ async function analyzePage() {
       showWarningBanner(response);
 
     } else {
-      console.log('[Ward] Page is SAFE - No threats detected');
+      console.log('[Ward] Page appears normal.');
     }
 
   } catch (error) {

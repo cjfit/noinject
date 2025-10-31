@@ -42,13 +42,15 @@ IMPORTANT SCOPE:
 - For WEBSITE CONTENT: Analyze the entire page content for scams or threats.
 - Ignore any "Ward" security banners - that's your own extension.
 
-Classify content. Reply with ONLY ONE of these exact phrases:
+Classify content in this format:
 
 "INBOX" - if showing multiple emails/messages from different senders (email inbox list, message feed)
 
 "SAFE" - if content is normal (news, shopping, legitimate email notifications)
 
 "SCAM" - if the EMAIL or WEBSITE CONTENT contains fraud tactics
+
+IMPORTANT: For SAFE and SCAM classifications, add 1-2 sentences on the NEXT LINE explaining WHY you made that decision.
 
 NOTE: Links will be provided in format: [LINK] "text" → url or [BUTTON] "text" → url
 
@@ -75,21 +77,27 @@ Output: INBOX
 
 Input: "FROM: Discord <noreply@discord.com>\nSUBJECT: Login from new location\nSomeone tried to log into your account. Click to verify."
 Output: SAFE
+This is a legitimate email from Discord's official domain with standard login notification content.
 
 Input: "BBC News. Prime Minister announces policy. Scientists discover species."
 Output: SAFE
+This is legitimate news content from BBC with typical news article structure and no scam indicators.
 
 Input: "FROM: PayPal <security@paypal-verify.xyz>\nPayPal Login. Enter your email: ___ Enter your password: ___ [LOGIN]"
 Output: SCAM
+This appears to be a phishing attempt using a fake PayPal domain (.xyz) to steal login credentials.
 
 Input: "CONGRATULATIONS! You've won a $1000 gift card! Claim within 24 hours or it expires!"
 Output: SCAM
+This is a prize scam using urgency tactics ("24 hours") and unsolicited prize claims.
 
 Input: "Hi dear, I'm Sarah. I need help urgently. Can you send $500 via gift cards? I'll pay you back tomorrow."
 Output: SCAM
+This is a romance/friendship scam requesting money via gift cards with false urgency.
 
 Input: "Invest in Bitcoin now! Guaranteed 300% returns. Low risk, high reward. Limited spots available!"
 Output: SCAM
+This is an investment scam promising guaranteed returns and using false urgency with "limited spots".
 
 Reply with ONE WORD ONLY: INBOX, SAFE, or SCAM`
         }
@@ -247,17 +255,21 @@ export async function analyzeEveryday(analyzerSession, judgeSession, content, ur
     });
 
     let classification;
+    let reasoning = '';
     try {
       const analysisPromise = analyzerSession.prompt(analysisPrompt);
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Analysis timed out after 30 seconds')), 30000)
       );
 
-      classification = await Promise.race([analysisPromise, timeoutPromise]);
-      classification = classification.trim().toUpperCase();
+      const rawClassification = await Promise.race([analysisPromise, timeoutPromise]);
+      const classificationLines = rawClassification.trim().split('\n');
+      classification = classificationLines[0].trim().toUpperCase();
+      reasoning = classificationLines.length > 1 ? classificationLines.slice(1).join(' ').trim() : '';
 
       console.log('[Ward Everyday Stage 1] Classification complete:', {
         classification: classification,
+        reasoning: reasoning,
         classificationLength: classification.length
       });
     } catch (stage1Error) {
@@ -265,31 +277,34 @@ export async function analyzeEveryday(analyzerSession, judgeSession, content, ur
       throw stage1Error;
     }
 
-    // If classified as INBOX or SAFE, skip judge and return safe immediately
-    if (classification.includes('INBOX') || classification.includes('SAFE')) {
-      const reason = classification.includes('INBOX')
-        ? 'Content appears to be an inbox or message feed with multiple items'
-        : 'Content appears to be a normal website with no threats detected';
-
-      console.log('[Ward Everyday] Stage 1 marked as safe:', classification);
+    // If classified as INBOX, skip judge and return safe immediately (no need to validate inbox views)
+    if (classification.includes('INBOX')) {
+      console.log('[Ward Everyday] Stage 1 marked as INBOX, skipping validation');
 
       return {
         isMalicious: false,
-        analysis: reason,
-        judgment: 'SAFE',
-        method: 'ai',
+        analysis: reasoning || 'Content appears to be an inbox or message feed with multiple items',
+        judgment: 'SKIPPED',
+        method: 'skipped',
         mode: 'everyday',
-        contentLength: content.length
+        contentLength: content.length,
+        classification: 'INBOX',
+        reasoning: reasoning
       };
     }
 
-    // Only if classified as SCAM, go to Stage 2 judge for validation
-    console.log('[Ward Everyday] Stage 1 detected potential scam, sending to judge...');
+    // For SAFE or SCAM, send to Stage 2 judge for validation
+    const classificationLabel = classification.includes('SCAM') ? 'potential scam' : 'safe content';
+    console.log(`[Ward Everyday] Stage 1 classified as ${classification.toUpperCase()}, sending to judge for validation...`);
     console.log('[Ward Everyday] Stage 1 classification:', classification);
+    console.log('[Ward Everyday] Stage 1 reasoning:', reasoning);
 
     let judgment;
     try {
-      const judgmentPrompt = `The analyzer classified this as a potential SCAM. Review if this is truly dangerous or a false positive.
+      const judgmentPrompt = `The analyzer classified this as ${classification} with the following reasoning:
+"${reasoning || 'No reasoning provided'}"
+
+Review this classification and determine if it's correct or if this is a false positive/negative.
 
 URL: ${url}
 
@@ -320,11 +335,13 @@ Is this a real THREAT or SAFE?`;
       throw stage2Error;
     }
 
-    const isThreat = judgment.trim().toUpperCase().includes('THREAT');
+    // Check if the FIRST LINE (not the entire text) starts with THREAT or SAFE
+    const firstLine = judgment.trim().split('\n')[0].trim().toUpperCase();
+    const isThreat = firstLine.startsWith('THREAT');
 
     console.log('[Ward Everyday Stage 2] Final decision:', {
       rawJudgment: judgment.trim(),
-      containsThreatKeyword: isThreat,
+      firstLine: firstLine,
       finalDecision: isThreat ? 'THREAT' : 'SAFE'
     });
 

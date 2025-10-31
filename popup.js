@@ -78,13 +78,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         </svg>
       `;
       statusTitle.textContent = 'Scan Skipped';
-      statusDescription.textContent = 'This page type is not scanned';
+      statusDescription.textContent = result.analysis || 'This page type is not scanned';
 
-      if (result.analysis) {
-        analysisDetails.classList.remove('hidden');
-        analysisText.textContent = result.analysis;
-        analysisMethod.textContent = 'Skipped';
-      }
+      // Hide analysis details for skipped content
+      analysisDetails.classList.add('hidden');
       return;
     }
 
@@ -104,7 +101,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (result.analysis) {
         analysisDetails.classList.remove('hidden');
         analysisText.textContent = result.analysis;
-        analysisMethod.textContent = 'Timeout';
       }
       return;
     }
@@ -115,7 +111,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (result.analysis) {
         analysisDetails.classList.remove('hidden');
         analysisText.textContent = result.analysis;
-        analysisMethod.textContent = 'Error';
       }
       return;
     }
@@ -137,16 +132,15 @@ document.addEventListener('DOMContentLoaded', async () => {
           summary = lines[startIndex].trim();
         }
 
-        let recommendationStarted = false;
-        for (let i = startIndex + 1; i < lines.length; i++) {
-          const line = lines[i].trim();
+        // The last line is ALWAYS the recommendation to show (keep ** formatting)
+        if (lines.length > 0) {
+          recommendation = lines[lines.length - 1].trim();
+        }
 
-          if (line.includes('**')) {
-            recommendationStarted = true;
-            recommendation += line + ' ';
-          } else if (recommendationStarted) {
-            recommendation += line + ' ';
-          } else if (line.startsWith('*')) {
+        // Collect bullet points (lines starting with * but not the last line)
+        for (let i = startIndex + 1; i < lines.length - 1; i++) {
+          const line = lines[i].trim();
+          if (line.startsWith('*') && !line.startsWith('**')) {
             details.push(line.substring(1).trim());
           }
         }
@@ -166,14 +160,38 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Show analysis details with structured format
       analysisDetails.classList.remove('hidden');
 
-      // Only show recommendation in popup (abbreviated)
+      // Parse out bold text from recommendation for prominent display
+      let boldAction = '';
+      let fullRecommendation = '';
+
       if (recommendation) {
-        // Format bold text
-        const formattedRec = recommendation.trim().replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-        analysisText.innerHTML = formattedRec;
+        const boldMatch = recommendation.match(/\*\*([^*]+)\*\*/);
+        if (boldMatch) {
+          boldAction = boldMatch[1];
+          fullRecommendation = recommendation;
+        } else {
+          boldAction = 'Exercise caution when interacting with this content.';
+          fullRecommendation = recommendation;
+        }
       } else {
-        analysisText.textContent = 'Exercise caution when interacting with this content.';
+        boldAction = 'Exercise caution when interacting with this content.';
+        fullRecommendation = 'Exercise caution when interacting with this content.';
       }
+
+      // Display prominent action box with info button
+      analysisText.innerHTML = `
+        <div class="action-box">
+          <div class="action-text">${boldAction}</div>
+          <button class="info-btn" title="More details">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="full-recommendation">${fullRecommendation.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')}</div>
+      `;
 
       // Populate expanded details section
       const expandedDetails = document.getElementById('expandedDetails');
@@ -189,15 +207,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         redFlagsSection.innerHTML = '';
       }
 
-      // Add full recommendation
-      if (recommendation) {
-        const formattedFullRec = recommendation.trim().replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-        fullRecommendationSection.innerHTML = `<h4>💡 Full Analysis</h4><div class="recommendation-text">${formattedFullRec}</div>`;
+      // Add full recommendation to expanded section
+      if (fullRecommendation) {
+        const formattedFullRec = fullRecommendation.trim().replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        fullRecommendationSection.innerHTML = `<h4>💡 Summary</h4><div class="recommendation-text">${formattedFullRec}</div>`;
       } else {
         fullRecommendationSection.innerHTML = '';
       }
 
-      // Make recommendation box clickable to toggle accordion
+      // Make entire recommendation box clickable to toggle accordion
       analysisText.onclick = () => {
         expandedDetails.classList.toggle('open');
       };
@@ -213,8 +231,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           <path d="M20 6L9 17l-5-5"></path>
         </svg>
       `;
-      statusTitle.textContent = 'Page is Safe';
-      statusDescription.textContent = 'No threats detected on this page.';
+      statusTitle.textContent = 'Page appears okay';
+      statusDescription.textContent = 'Use normal caution, as Ward cannot detect every threat.';
 
       // Hide analysis for safe content
       analysisDetails.classList.add('hidden');
