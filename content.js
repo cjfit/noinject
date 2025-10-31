@@ -224,6 +224,12 @@ function showWarningBanner(analysisResult) {
             Open the Ward extension for details
           </div>
         </div>
+        <div style="position: absolute; right: 80px; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation: bounce 1.5s ease-in-out infinite;">
+            <path d="M12 19V5M5 12l7-7 7 7"></path>
+          </svg>
+          <div style="font-size: 11px; font-weight: 500; opacity: 0.9;">Click extension</div>
+        </div>
         <button id="ward-close-banner" style="
           background: rgba(255, 255, 255, 0.2);
           border: none;
@@ -252,6 +258,14 @@ function showWarningBanner(analysisResult) {
         to {
           transform: translateY(0);
           opacity: 1;
+        }
+      }
+      @keyframes bounce {
+        0%, 100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-8px);
         }
       }
       #ward-warning-banner::-webkit-scrollbar {
