@@ -78,10 +78,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         </svg>
       `;
       statusTitle.textContent = 'Scan Skipped';
-      statusDescription.textContent = result.analysis || 'This page type is not scanned';
+      statusDescription.textContent = 'This page type is not scanned';
 
-      // Hide analysis details for skipped content
-      analysisDetails.classList.add('hidden');
+      if (result.analysis) {
+        analysisDetails.classList.remove('hidden');
+        analysisText.textContent = result.analysis;
+      }
       return;
     }
 
@@ -229,7 +231,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       statusIcon.innerHTML = `
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <path d="M20 6L9 17l-5-5"></path>
-        </svg>
+        </svg>U
       `;
       statusTitle.textContent = 'Page appears okay';
       statusDescription.textContent = 'Use normal caution, as Ward cannot detect every threat.';

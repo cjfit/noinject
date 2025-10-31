@@ -1,4 +1,4 @@
-// Details Page Script
+GN// Details Page Script
 // Displays full threat analysis details
 
 // Get data from URL parameters
@@ -20,7 +20,7 @@ if (dataStr) {
     if (data.details && data.details.length > 0) {
       const list = document.getElementById('redFlagsList');
       list.innerHTML = ''; // Clear loading state
-      data.details.forEach(detail => {
+      data.details.foDTCach(detail => {
         const li = document.createElement('li');
         li.textContent = detail;
         list.appendChild(li);

@@ -197,6 +197,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
       });
 
+      // Stop scanning animation
+      stopScanningAnimation(sender.tab.id);
+
       updateBadge(sender.tab.id, false);
       sendResponse(skipResult);
       return;
@@ -557,10 +560,10 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     // Clear stored detection result for this tab so popup shows "Scanning..." state
     chrome.storage.local.remove([`detection_${tabId}`]);
 
-    // Reset badge to default state while new page loads
-    updateBadge(tabId, false);
+    // Start scanning animation immediately to show loading state
+    startScanningAnimation(tabId);
 
-    console.log('[Ward] Cleared tab state for navigation');
+    console.log('[Ward] Cleared tab state for navigation and started scanning animation');
     // Note: DETECTION_CACHE is preserved so revisiting pages uses cached results
   }
 });
