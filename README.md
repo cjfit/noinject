@@ -17,6 +17,7 @@
 4. Click "Load unpacked" → Select the project folder
 5. Navigate to any website to see Ward in action (for testing, go to your spam email box or if you're feeling very daring visit online known malicious sites from abuse.ch:
    https://urlhaus.abuse.ch/browse.php?search=url_status:online&page=1
+6. To see Ward scanning details, click the red shield icon in your Chrome extensions toolbar.
 
 ## Overview
 
