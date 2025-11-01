@@ -210,7 +210,7 @@ function showWarningBanner(analysisResult) {
       max-height: 400px;
       overflow-y: auto;
     ">
-      <div style="display: flex; align-items: center; justify-content: center; gap: 16px; max-width: 900px; margin: 0 auto; position: relative;">
+      <div style="display: flex; align-items: center; gap: 16px; max-width: 1200px; margin: 0 auto; padding: 0 20px;">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;">
           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
           <line x1="12" y1="9" x2="12" y2="13"></line>
@@ -222,7 +222,7 @@ function showWarningBanner(analysisResult) {
           </div>
           <div style="font-size: 13px; opacity: 0.95; display: flex; align-items: center; justify-content: center; gap: 6px;">
             <span>Open the Ward extension</span>
-            <img src="${chrome.runtime.getURL('icons/icon-danger-16.png')}" width="16" height="16" style="display: block;" alt="Ward icon">
+            <img src="${chrome.runtime.getURL('icons/icon-danger-32.png')}" width="20" height="20" style="display: block;" alt="Ward icon">
             <span>in your toolbar</span>
           </div>
         </div>
@@ -237,8 +237,7 @@ function showWarningBanner(analysisResult) {
           font-weight: 500;
           transition: background 0.2s;
           flex-shrink: 0;
-          position: absolute;
-          right: 0;
+          margin-left: auto;
         " onmouseover="this.style.background='rgba(255,255,255,0.3)'"
            onmouseout="this.style.background='rgba(255,255,255,0.2)'">
           Dismiss
