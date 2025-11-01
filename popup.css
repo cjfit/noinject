@@ -17,7 +17,7 @@ body {
 
 /* Header */
 .header {
-  background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+  background: linear-gradient(135deg, #8B3A3A 0%, #6B2D2D 100%);
   color: white;
   padding: 20px;
   display: flex;
@@ -32,7 +32,8 @@ body {
 }
 
 .shield-icon {
-  color: #10B981;
+  width: 28px;
+  height: 28px;
 }
 
 .header h1 {
@@ -43,10 +44,11 @@ body {
 
 .version {
   font-size: 12px;
-  opacity: 0.7;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(200, 165, 120, 0.3);
+  color: #F5E6D3;
   padding: 4px 8px;
   border-radius: 4px;
+  font-weight: 500;
 }
 
 /* Status Card */

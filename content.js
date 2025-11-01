@@ -123,6 +123,23 @@ function extractVisibleContent() {
   let fullText = textContent.join(' ');
   fullText = fullText.replace(/\s+/g, ' ').trim();
 
+  // Extract content from iframes (for email clients)
+  const iframes = document.querySelectorAll('iframe');
+  for (const iframe of iframes) {
+    try {
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (iframeDoc && iframeDoc.body) {
+        const iframeText = iframeDoc.body.innerText || iframeDoc.body.textContent || '';
+        if (iframeText.trim()) {
+          fullText += '\n\nIFRAME CONTENT:\n' + iframeText.trim();
+          console.log('[Ward Content] Extracted iframe content, length:', iframeText.length);
+        }
+      }
+    } catch (e) {
+      // Cross-origin iframe, skip
+    }
+  }
+
   return fullText;
 }
 

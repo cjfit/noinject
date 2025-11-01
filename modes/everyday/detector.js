@@ -312,6 +312,10 @@ export async function analyzeEveryday(analyzerSession, judgeSession, content, ur
 
 Review this classification and determine if it's correct or if this is a false positive/negative.
 
+If impersonation is suspected, identify which company or brand is being impersonated and verify whether the domain/sender matches that company.
+
+Note: Legitimate email client domains include gmail.com, proton.me, outlook.com, yahoo.com. These are NOT suspicious. Focus on the impersonated company in the message content.
+
 URL: ${url}
 
 Content preview:

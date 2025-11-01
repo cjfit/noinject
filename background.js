@@ -574,9 +574,14 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   // Trigger on any loading event, whether URL changed or not
   if (changeInfo.status === 'loading') {
-    // Skip chrome:// pages and extension pages
-    if (tab.url && (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://'))) {
-      console.log('[Ward] Skipping chrome:// or extension page:', tab.url);
+    // Skip chrome://, extension pages, new tab, and blank pages
+    if (!tab.url ||
+        tab.url.startsWith('chrome://') ||
+        tab.url.startsWith('chrome-extension://') ||
+        tab.url.startsWith('about:') ||
+        tab.url.startsWith('edge://') ||
+        tab.url === '') {
+      console.log('[Ward] Skipping system/blank page:', tab.url);
 
       // Store a SKIPPED result so popup shows "Page skipped" instead of "Scanning..."
       const skippedResult = {
