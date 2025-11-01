@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     'autoScan',
     'showBanner',
     'scanChanges',
-    'useAI',
     'ignoreRules'
   ]);
 
@@ -16,7 +15,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('autoScan').checked = settings.autoScan !== false;
   document.getElementById('showBanner').checked = settings.showBanner !== false;
   document.getElementById('scanChanges').checked = settings.scanChanges !== false;
-  document.getElementById('useAI').checked = settings.useAI !== false;
 
   // Render ignore rules
   renderIgnoreRules(ignoreRules);
@@ -34,11 +32,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.getElementById('scanChanges').addEventListener('change', async (e) => {
     await chrome.storage.local.set({ scanChanges: e.target.checked });
-    showMessage('Settings saved');
-  });
-
-  document.getElementById('useAI').addEventListener('change', async (e) => {
-    await chrome.storage.local.set({ useAI: e.target.checked });
     showMessage('Settings saved');
   });
 });

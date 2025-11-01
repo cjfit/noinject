@@ -17,6 +17,21 @@
       <div class="version">v1.0</div>
     </div>
 
+    <!-- Unsupported Device Banner -->
+    <div id="unsupportedBanner" class="unsupported-banner hidden">
+      <div class="unsupported-icon">⚠️</div>
+      <div class="unsupported-content">
+        <h3>Device Not Supported</h3>
+        <p>Ward requires on-device AI (Gemini Nano) which is not available on your device.</p>
+        <div class="unsupported-links">
+          <a href="https://developer.chrome.com/docs/ai/prompt-api#hardware-requirements" target="_blank">Hardware Requirements</a>
+          <span>•</span>
+          <a href="chrome://on-device-internals/" target="_blank">Check Diagnostics</a>
+        </div>
+        <p class="unsupported-note">Please uninstall Ward if your device does not meet the requirements.</p>
+      </div>
+    </div>
+
     <!-- Status Card -->
     <div id="statusCard" class="status-card">
       <div class="status-icon" id="statusIcon">

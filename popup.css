@@ -51,6 +51,78 @@ body {
   font-weight: 500;
 }
 
+/* Unsupported Device Banner */
+.unsupported-banner {
+  background: #FEF2F2;
+  border: 2px solid #FCA5A5;
+  border-left: 4px solid #DC2626;
+  padding: 16px;
+  margin: 16px;
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.unsupported-banner.hidden {
+  display: none;
+}
+
+.unsupported-icon {
+  font-size: 24px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.unsupported-content {
+  flex: 1;
+}
+
+.unsupported-content h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #991B1B;
+  margin-bottom: 8px;
+}
+
+.unsupported-content p {
+  font-size: 13px;
+  color: #7F1D1D;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.unsupported-links {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.unsupported-links a {
+  font-size: 12px;
+  color: #DC2626;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.unsupported-links a:hover {
+  color: #991B1B;
+}
+
+.unsupported-links span {
+  color: #FCA5A5;
+  font-size: 12px;
+}
+
+.unsupported-note {
+  font-size: 12px;
+  color: #991B1B;
+  font-weight: 600;
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
 /* Status Card */
 .status-card {
   padding: 24px 20px;

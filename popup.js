@@ -12,9 +12,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   const settingsBtn = document.getElementById('settingsBtn');
   const ignoreUrlBtn = document.getElementById('ignoreUrlBtn');
   const ignoreDomainBtn = document.getElementById('ignoreDomainBtn');
+  const unsupportedBanner = document.getElementById('unsupportedBanner');
 
   // Get current tab
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+  // Check if AI is available
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'checkAiAvailability' });
+    if (response && !response.available) {
+      // Show unsupported banner
+      unsupportedBanner.classList.remove('hidden');
+      // Hide status card since AI is not working
+      statusCard.style.display = 'none';
+    }
+  } catch (error) {
+    console.error('[Ward Popup] Failed to check AI availability:', error);
+  }
 
   // Load status
   async function loadStatus() {

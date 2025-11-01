@@ -343,6 +343,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 
   // Handle clearing cache for a specific tab (e.g., when rescan is clicked)
+  if (request.action === 'checkAiAvailability') {
+    sendResponse({ available: isAiAvailable });
+    return;
+  }
+
   if (request.action === 'clearTabCache') {
     const tabId = request.tabId;
     console.log(`[Ward] Clearing cache for tab ${tabId}`);
