@@ -9,8 +9,10 @@
   [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 </div>
 
-## Quickstart
+## Demo Video
+[![Ward Demo](https://img.youtube.com/vi/Br_3D5ZlGkk/0.jpg)](https://www.youtube.com/watch?v=Br_3D5ZlGkk)
 
+## Quickstart
 1. Clone the repo
 2. Open Chrome → `chrome://extensions`
 3. Enable "Developer mode" (top right)
