@@ -6,7 +6,7 @@
   **Protect yourself from phishing, scams, and online threats**
 
   [![Chrome Web Store](https://img.shields.io/badge/Chrome-Extension-green?style=flat&logo=google-chrome)](https://chrome.google.com/webstore)
-  [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+  [![License](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 </div>
 
 ## Demo Video
@@ -275,7 +275,7 @@ Contributions welcome! Areas for improvement:
 
 ## License
 
-MIT License - See LICENSE file for details
+AGPL-3.0 License - See LICENSE file for details
 
 ## Acknowledgments
 
