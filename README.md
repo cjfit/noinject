@@ -1,4 +1,4 @@
-# Ward - Consumer Protection Shield
+# Ward
 
 <div align="center">
   <img src="icons/ward-shield.png" width="128" height="128" alt="Ward Logo">
