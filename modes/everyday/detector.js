@@ -251,6 +251,10 @@ export async function analyzeEveryday(analyzerSession, judgeSession, content, ur
 
     const analysisPrompt = `Classify this content:\n\n${trimmedContent}`;
 
+    console.log('[Ward Everyday Stage 1] ========== FULL DOM SENT TO ANALYZER ==========');
+    console.log(trimmedContent);
+    console.log('[Ward Everyday Stage 1] ========== END DOM ==========');
+
     console.log('[Ward Everyday Stage 1] Classifying content:', {
       contentLength: trimmedContent.length,
       preview: trimmedContent.substring(0, 150) + '...'
