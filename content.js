@@ -220,8 +220,10 @@ function showWarningBanner(analysisResult) {
           <div style="font-weight: 600; margin-bottom: 4px; font-size: 15px;">
             ${recommendation}
           </div>
-          <div style="font-size: 13px; opacity: 0.95;">
-            Open the Ward extension for details
+          <div style="font-size: 13px; opacity: 0.95; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <span>Open the Ward extension</span>
+            <img src="${chrome.runtime.getURL('icons/icon-danger-16.png')}" width="16" height="16" style="display: block;" alt="Ward icon">
+            <span>in your toolbar</span>
           </div>
         </div>
         <button id="ward-close-banner" style="

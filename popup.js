@@ -252,6 +252,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     showScanning();
 
     try {
+      // Clear cached results for this tab
+      await chrome.runtime.sendMessage({
+        action: 'clearTabCache',
+        tabId: tab.id
+      });
+
       // Trigger a new scan by reloading the content script logic
       await chrome.tabs.reload(tab.id);
       // Wait a bit for the scan to complete

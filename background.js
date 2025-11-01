@@ -20,6 +20,12 @@ const DETECTION_CACHE = new Map(); // Cache results per URL
 const ACTIVE_ANALYSES = new Map(); // Track ongoing analyses by tabId
 const SCANNING_ANIMATIONS = new Map(); // Track scanning animations by tabId
 
+// Generate cache key - always include tabId for proper isolation
+function getCacheKey(url, content, tabId) {
+  const contentHash = content.substring(0, 500);
+  return `tab${tabId}:${url}:${contentHash}`;
+}
+
 // Initialize AI based on current mode
 async function initializeAI() {
   try {
@@ -232,8 +238,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return;
       }
 
-      // Check cache first (using URL + content hash as key)
-      const cacheKey = `${url}:${content.substring(0, 500)}`;
+      // Check cache first (using URL + content hash + tabId as key)
+      const cacheKey = getCacheKey(url, content, sender.tab.id);
       if (DETECTION_CACHE.has(cacheKey)) {
         const cached = DETECTION_CACHE.get(cacheKey);
         console.log('[Ward] Returning cached result for URL:', url);
@@ -303,25 +309,38 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const duration = Date.now() - analysisTracker.startTime;
         console.log(`[Ward] Analysis completed in ${duration}ms`);
 
-        // Stop scanning animation
-        stopScanningAnimation(sender.tab.id);
-
-        // Cache the result
-        DETECTION_CACHE.set(cacheKey, result);
-
-        // Update badge based on result
-        updateBadge(sender.tab.id, result.isMalicious);
-
-        // Store detection result for this tab
-        chrome.storage.local.set({
-          [`detection_${sender.tab.id}`]: {
-            result,
-            url: sender.tab.url,
-            timestamp: Date.now()
+        // Verify tab still exists and is on same URL before storing results
+        chrome.tabs.get(tabId, (tab) => {
+          if (chrome.runtime.lastError) {
+            console.log(`[Ward] Tab ${tabId} no longer exists, discarding results`);
+            return;
           }
-        });
 
-        sendResponse(result);
+          if (tab.url !== url) {
+            console.log(`[Ward] Tab ${tabId} navigated away (${url} -> ${tab.url}), discarding results`);
+            return;
+          }
+
+          // Stop scanning animation
+          stopScanningAnimation(tabId);
+
+          // Cache the result
+          DETECTION_CACHE.set(cacheKey, result);
+
+          // Update badge based on result
+          updateBadge(tabId, result.isMalicious);
+
+          // Store detection result for this tab
+          chrome.storage.local.set({
+            [`detection_${tabId}`]: {
+              result,
+              url: tab.url,
+              timestamp: Date.now()
+            }
+          });
+
+          sendResponse(result);
+        });
       }).catch(error => {
         if (analysisTracker.cancelled) {
           console.log(`[Ward] Analysis cancelled for tab ${tabId}, ignoring error`);
@@ -375,6 +394,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ success: true });
     });
 
+    return true;
+  }
+
+  // Handle clearing cache for a specific tab (e.g., when rescan is clicked)
+  if (request.action === 'clearTabCache') {
+    const tabId = request.tabId;
+    console.log(`[Ward] Clearing cache for tab ${tabId}`);
+
+    // Remove all cache entries for this tab
+    const keysToDelete = [];
+    for (const key of DETECTION_CACHE.keys()) {
+      if (key.startsWith(`tab${tabId}:`)) {
+        keysToDelete.push(key);
+      }
+    }
+    keysToDelete.forEach(key => DETECTION_CACHE.delete(key));
+
+    console.log(`[Ward] Cleared ${keysToDelete.length} cache entries for tab ${tabId}`);
+    sendResponse({ success: true, clearedCount: keysToDelete.length });
     return true;
   }
 
@@ -529,12 +567,63 @@ function updateBadge(tabId, isMalicious) {
   }
 }
 
-// Clean up old cache entries periodically
-setInterval(() => {
+// Clean up old detection results from storage periodically
+setInterval(async () => {
+  // Clean up cache if it gets too large
   if (DETECTION_CACHE.size > 100) {
     DETECTION_CACHE.clear();
   }
+
+  // Clean up old detection results from storage (older than 1 hour)
+  const allStorage = await chrome.storage.local.get(null);
+  const now = Date.now();
+  const keysToRemove = [];
+
+  for (const [key, value] of Object.entries(allStorage)) {
+    if (key.startsWith('detection_') &&
+        value.timestamp &&
+        now - value.timestamp > 3600000) {
+      keysToRemove.push(key);
+    }
+  }
+
+  if (keysToRemove.length > 0) {
+    await chrome.storage.local.remove(keysToRemove);
+    console.log(`[Ward] Cleaned up ${keysToRemove.length} old detection results`);
+  }
 }, 300000); // Every 5 minutes
+
+// Clean up tab state when tab is closed
+chrome.tabs.onRemoved.addListener((tabId) => {
+  console.log(`[Ward] Tab ${tabId} closed, cleaning up state`);
+
+  // Cancel any ongoing analysis
+  if (ACTIVE_ANALYSES.has(tabId)) {
+    const analysis = ACTIVE_ANALYSES.get(tabId);
+    analysis.cancelled = true;
+    clearTimeout(analysis.timeout);
+    ACTIVE_ANALYSES.delete(tabId);
+  }
+
+  // Stop any scanning animation
+  stopScanningAnimation(tabId);
+
+  // Remove detection result from storage
+  chrome.storage.local.remove([`detection_${tabId}`]);
+
+  // Clean up tab-specific cache entries
+  const keysToDelete = [];
+  for (const key of DETECTION_CACHE.keys()) {
+    if (key.startsWith(`tab${tabId}:`)) {
+      keysToDelete.push(key);
+    }
+  }
+  keysToDelete.forEach(key => DETECTION_CACHE.delete(key));
+
+  if (keysToDelete.length > 0) {
+    console.log(`[Ward] Removed ${keysToDelete.length} cache entries for tab ${tabId}`);
+  }
+});
 
 // Clear stored tab state when navigating to a new page (but keep DETECTION_CACHE)
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
