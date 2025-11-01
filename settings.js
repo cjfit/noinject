@@ -3,7 +3,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
   // Load all settings
   const settings = await chrome.storage.local.get([
-    'detectionMode',
     'autoScan',
     'showBanner',
     'scanChanges',
@@ -11,17 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     'ignoreRules'
   ]);
 
-  const detectionMode = settings.detectionMode || 'everyday';
   const ignoreRules = settings.ignoreRules || [];
-
-  // Set mode selector
-  document.querySelectorAll('.mode-option').forEach(option => {
-    if (option.dataset.mode === detectionMode) {
-      option.classList.add('active');
-    } else {
-      option.classList.remove('active');
-    }
-  });
 
   // Set toggles
   document.getElementById('autoScan').checked = settings.autoScan !== false;
@@ -31,28 +20,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Render ignore rules
   renderIgnoreRules(ignoreRules);
-
-  // Handle mode selection
-  document.querySelectorAll('.mode-option:not(.disabled)').forEach(option => {
-    option.addEventListener('click', async () => {
-      const mode = option.dataset.mode;
-
-      // Update UI
-      document.querySelectorAll('.mode-option').forEach(opt => {
-        opt.classList.remove('active');
-      });
-      option.classList.add('active');
-
-      // Save to storage
-      await chrome.storage.local.set({ detectionMode: mode });
-
-      // Show message
-      showMessage(`Switched to ${getModeDisplayName(mode)} mode`);
-
-      // Notify background script
-      chrome.runtime.sendMessage({ action: 'changeMode', mode });
-    });
-  });
 
   // Handle toggle changes
   document.getElementById('autoScan').addEventListener('change', async (e) => {
@@ -111,14 +78,6 @@ async function removeIgnoreRule(index) {
   showMessage('Ignore rule removed');
 }
 
-function getModeDisplayName(mode) {
-  const names = {
-    'everyday': 'Everyday',
-    'ai-power-user': 'AI Power User',
-    'enterprise': 'Enterprise'
-  };
-  return names[mode] || mode;
-}
 
 function showMessage(text) {
   const msg = document.getElementById('statusMessage');

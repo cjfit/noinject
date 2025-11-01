@@ -1,0 +1,1 @@
+This folder contains lookalike HTML files for testing Ward's threat detections.

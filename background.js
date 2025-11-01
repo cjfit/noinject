@@ -2,19 +2,14 @@
 // Handles AI-powered threat detection using Chrome's Prompt API
 
 import { initializeEverydayMode, analyzeEveryday } from './modes/everyday/detector.js';
-import { initializeAIPowerUserMode, analyzeAIPowerUser } from './modes/ai-power-user/detector.js';
 
 console.log('[Ward] Background script starting...');
 console.log('[Ward] Imports check:', {
   hasInitializeEverydayMode: typeof initializeEverydayMode === 'function',
-  hasAnalyzeEveryday: typeof analyzeEveryday === 'function',
-  hasInitializeAIPowerUserMode: typeof initializeAIPowerUserMode === 'function',
-  hasAnalyzeAIPowerUser: typeof analyzeAIPowerUser === 'function'
+  hasAnalyzeEveryday: typeof analyzeEveryday === 'function'
 });
 
-let currentMode = 'everyday'; // Default mode
 let everydaySessions = { analyzerSession: null, judgeSession: null };
-let aiPowerUserSessions = { aiSession: null, judgeSession: null };
 let isAiAvailable = false;
 const DETECTION_CACHE = new Map(); // Cache results per URL
 const ACTIVE_ANALYSES = new Map(); // Track ongoing analyses by tabId
@@ -26,52 +21,39 @@ function getCacheKey(url, content, tabId) {
   return `tab${tabId}:${url}:${contentHash}`;
 }
 
-// Initialize AI based on current mode
+// Initialize AI
 async function initializeAI() {
   try {
-    // Load saved mode from storage
-    const { detectionMode = 'everyday' } = await chrome.storage.local.get(['detectionMode']);
-    currentMode = detectionMode;
+    console.log('[Ward] Initializing everyday mode...');
 
-    console.log(`[Ward] Initializing in ${currentMode} mode...`);
+    if (typeof initializeEverydayMode !== 'function') {
+      console.error('[Ward] ERROR: initializeEverydayMode is not a function!');
+      isAiAvailable = false;
+      return;
+    }
 
-    if (currentMode === 'everyday') {
-      console.log('[Ward] Calling initializeEverydayMode()...');
-      console.log('[Ward] initializeEverydayMode function:', initializeEverydayMode);
-
-      if (typeof initializeEverydayMode !== 'function') {
-        console.error('[Ward] ERROR: initializeEverydayMode is not a function!');
-        isAiAvailable = false;
-        return;
-      }
-
-      try {
-        console.log('[Ward] About to call initializeEverydayMode...');
-        everydaySessions = await initializeEverydayMode();
-        console.log('[Ward] initializeEverydayMode call completed');
-        console.log('[Ward] initializeEverydayMode returned:', {
-          hasAnalyzer: !!everydaySessions?.analyzerSession,
-          hasJudge: !!everydaySessions?.judgeSession,
-          rawResult: everydaySessions
-        });
-        isAiAvailable = everydaySessions.analyzerSession !== null && everydaySessions.judgeSession !== null;
-        console.log('[Ward] Everyday mode sessions:', everydaySessions.analyzerSession ? 'Created' : 'Failed');
-        console.log('[Ward] isAiAvailable:', isAiAvailable);
-      } catch (everydayInitError) {
-        console.error('[Ward] ERROR calling initializeEverydayMode:', everydayInitError);
-        console.error('[Ward] Error stack:', everydayInitError.stack);
-        isAiAvailable = false;
-      }
-    } else if (currentMode === 'ai-power-user') {
-      aiPowerUserSessions = await initializeAIPowerUserMode();
-      isAiAvailable = aiPowerUserSessions.aiSession !== null && aiPowerUserSessions.judgeSession !== null;
-      console.log('[Ward] AI Power User sessions:', aiPowerUserSessions.aiSession ? 'Created' : 'Failed');
+    try {
+      console.log('[Ward] About to call initializeEverydayMode...');
+      everydaySessions = await initializeEverydayMode();
+      console.log('[Ward] initializeEverydayMode call completed');
+      console.log('[Ward] initializeEverydayMode returned:', {
+        hasAnalyzer: !!everydaySessions?.analyzerSession,
+        hasJudge: !!everydaySessions?.judgeSession,
+        rawResult: everydaySessions
+      });
+      isAiAvailable = everydaySessions.analyzerSession !== null && everydaySessions.judgeSession !== null;
+      console.log('[Ward] Everyday mode sessions:', everydaySessions.analyzerSession ? 'Created' : 'Failed');
+      console.log('[Ward] isAiAvailable:', isAiAvailable);
+    } catch (everydayInitError) {
+      console.error('[Ward] ERROR calling initializeEverydayMode:', everydayInitError);
+      console.error('[Ward] Error stack:', everydayInitError.stack);
+      isAiAvailable = false;
     }
 
     if (isAiAvailable) {
-      console.log(`[Ward] ✓ ${currentMode} mode initialized successfully and ready`);
+      console.log('[Ward] ✓ Everyday mode initialized successfully and ready');
     } else {
-      console.warn(`[Ward] ✗ Failed to initialize ${currentMode} mode - AI will not be available`);
+      console.warn('[Ward] ✗ Failed to initialize everyday mode - AI will not be available');
     }
 
   } catch (error) {
@@ -80,7 +62,7 @@ async function initializeAI() {
   }
 }
 
-// Analyze content using current mode
+// Analyze content
 async function analyzeContent(content, url = 'unknown') {
   if (!isAiAvailable) {
     console.error('[Ward] AI not available - cannot analyze');
@@ -89,49 +71,27 @@ async function analyzeContent(content, url = 'unknown') {
       analysis: 'AI detection unavailable. Please enable Prompt API in chrome://flags.',
       judgment: 'ERROR',
       method: 'error',
-      mode: currentMode,
+      mode: 'everyday',
       contentLength: content.length
     };
   }
 
   try {
-    console.log(`[Ward] Running analysis in ${currentMode} mode`);
-
-    if (currentMode === 'everyday') {
-      console.log('[Ward] Using Everyday mode detector');
-      console.log('[Ward] Passing to analyzeEveryday:', {
-        hasAnalyzer: !!everydaySessions.analyzerSession,
-        hasJudge: !!everydaySessions.judgeSession,
-        contentLength: content.length,
-        url: url
-      });
-      const result = await analyzeEveryday(
-        everydaySessions.analyzerSession,
-        everydaySessions.judgeSession,
-        content,
-        url
-      );
-      console.log('[Ward] analyzeEveryday returned:', result);
-      return result;
-    } else if (currentMode === 'ai-power-user') {
-      console.log('[Ward] Using AI Power User mode detector');
-      return await analyzeAIPowerUser(
-        aiPowerUserSessions.aiSession,
-        aiPowerUserSessions.judgeSession,
-        content
-      );
-    }
-
-    // Fallback if mode not recognized
-    return {
-      isMalicious: false,
-      analysis: 'Unknown detection mode',
-      judgment: 'ERROR',
-      method: 'error',
-      mode: currentMode,
-      contentLength: content.length
-    };
-
+    console.log('[Ward] Running analysis in everyday mode');
+    console.log('[Ward] Passing to analyzeEveryday:', {
+      hasAnalyzer: !!everydaySessions.analyzerSession,
+      hasJudge: !!everydaySessions.judgeSession,
+      contentLength: content.length,
+      url: url
+    });
+    const result = await analyzeEveryday(
+      everydaySessions.analyzerSession,
+      everydaySessions.judgeSession,
+      content,
+      url
+    );
+    console.log('[Ward] analyzeEveryday returned:', result);
+    return result;
   } catch (error) {
     console.error('[Ward] Analysis error:', error);
     return {
@@ -139,7 +99,7 @@ async function analyzeContent(content, url = 'unknown') {
       analysis: `Analysis error: ${error.message}`,
       judgment: 'ERROR',
       method: 'error',
-      mode: currentMode,
+      mode: 'everyday',
       contentLength: content.length
     };
   }
@@ -190,7 +150,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         analysis: 'Page scanning skipped (email platform interface)',
         judgment: 'SKIPPED',
         method: 'skipped',
-        mode: currentMode,
+        mode: 'everyday',
         contentLength: 0
       };
 
@@ -220,7 +180,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           analysis: 'This page is ignored and will not be scanned.',
           judgment: 'IGNORED',
           method: 'ignored',
-          mode: currentMode,
+          mode: 'everyday',
           contentLength: content.length
         };
 
@@ -292,7 +252,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           analysis: 'Unable to scan. Proceed with caution.',
           judgment: 'Unable to scan. Proceed with caution.',
           method: 'timeout',
-          mode: currentMode,
+          mode: 'everyday',
           contentLength: content.length
         });
       }, 60000); // 60 second overall timeout
@@ -364,7 +324,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             ? 'Unable to scan. Proceed with caution.'
             : 'ERROR',
           method: error.message.includes('timeout') ? 'timeout' : 'error',
-          mode: currentMode,
+          mode: 'everyday',
           contentLength: content.length
         });
       });
@@ -381,21 +341,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
-  // Handle mode changes from settings page
-  if (request.action === 'changeMode') {
-    const newMode = request.mode;
-    console.log(`[Ward] Switching from ${currentMode} to ${newMode} mode`);
-    currentMode = newMode;
-
-    // Reinitialize AI with new mode
-    initializeAI().then(() => {
-      // Clear cache when mode changes
-      DETECTION_CACHE.clear();
-      sendResponse({ success: true });
-    });
-
-    return true;
-  }
 
   // Handle clearing cache for a specific tab (e.g., when rescan is clicked)
   if (request.action === 'clearTabCache') {

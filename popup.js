@@ -36,18 +36,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Display scanning state
-  async function showScanning() {
+  function showScanning() {
     statusIcon.className = 'status-icon loading';
     statusIcon.innerHTML = '<div class="spinner"></div>';
     statusTitle.textContent = 'Scanning page...';
-
-    // Get current mode to show appropriate message
-    const { detectionMode = 'everyday' } = await chrome.storage.local.get(['detectionMode']);
-    const modeMessage = detectionMode === 'everyday'
-      ? 'Analyzing content for threats'
-      : 'Analyzing content for prompt injection attacks';
-
-    statusDescription.textContent = modeMessage;
+    statusDescription.textContent = 'Analyzing content for threats';
     analysisDetails.classList.add('hidden');
   }
 
@@ -205,7 +198,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Add red flags if available
       if (details.length > 0) {
         redFlagsSection.innerHTML = '<h4>🚩 Red Flags</h4><ul>' +
-          details.map(detail => `<li>${detail}</li>`).join('') +
+          details.map(detail => `<li>${detail.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')}</li>`).join('') +
           '</ul>';
       } else {
         redFlagsSection.innerHTML = '';

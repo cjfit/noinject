@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+.test-banner {
+  background: repeating-linear-gradient(
+    45deg,
+    #ff0000,
+    #ff0000 10px,
+    #ffffff 10px,
+    #ffffff 20px
+  );
+  color: black;
+  font-weight: bold;
+  font-size: 24px;
+  padding: 20px;
+  text-align: center;
+  border: 5px solid red;
+  margin: 20px 0;
+}
+body {
+  padding: 0px;
+  margin: 0px;
+  background-color: #d7dbe0;
+  font-family: Arial, Helvetica, sans-serif;
+}
+.email-container {
+  max-width: 800px;
+  margin: 0 auto;
+  background-color: #FFFFFF;
+}
+.header {
+  background-color: #005EB8;
+  padding: 23px 0 0;
+}
+.header-content {
+  background-color: #FFFFFF;
+  padding: 36px 30px 28px;
+}
+.logo {
+  width: 104px;
+  height: 20px;
+  margin-bottom: 20px;
+}
+.badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: bold;
+  color: #000000;
+  background-color: #FF4444;
+  padding: 5px 10px;
+  border-radius: 20px;
+  margin: 20px 0;
+}
+.title {
+  font-size: 30px;
+  font-weight: bold;
+  color: #414042;
+  margin: 20px 0 28px;
+}
+.content {
+  padding: 30px;
+}
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: solid 1px #414042;
+}
+.info-label {
+  font-size: 16px;
+  color: #414042;
+}
+.info-value {
+  font-size: 16px;
+  font-weight: bold;
+  color: #414042;
+}
+.message {
+  font-size: 16px;
+  color: #414042;
+  margin: 30px 0;
+  line-height: 1.6;
+}
+.button {
+  background-color: #0060f0;
+  color: #ffffff;
+  font-size: 16px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 4px;
+  text-decoration: none;
+  display: inline-block;
+  margin: 20px 0;
+  cursor: pointer;
+}
+.footer {
+  background-color: #F6F6F6;
+  padding: 20px 30px 60px;
+  font-size: 12px;
+  color: #717171;
+  line-height: 1.8;
+}
+.urgent {
+  color: #DC2626;
+  font-weight: bold;
+}
+</style>
+</head>
+<body>
+
+<div class="email-container">
+  <div class="header">
+    <div class="header-content">
+      <div style="font-weight: bold; font-size: 18px; color: #005EB8; margin-bottom: 20px;">
+        <img src="./unnamed.png"> </img>
+      </div>
+
+      <div class="badge">
+        URGENT ACTION REQUIRED
+      </div>
+
+      <div class="title">
+        Verify Two-Factor Authentication by November 2nd
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="info-row">
+      <span class="info-label">Account</span>
+      <span class="info-value">Chase Checking (...8472)</span>
+    </div>
+
+    <div class="info-row">
+      <span class="info-label">Deadline</span>
+      <span class="info-value urgent">November 2, 2025</span>
+    </div>
+
+    <div class="info-row">
+      <span class="info-label">Status</span>
+      <span class="info-value urgent">Action Required</span>
+    </div>
+
+    <div class="message">
+      <strong class="urgent">Important Security Update</strong><br><br>
+
+      To protect your account, we're implementing mandatory two-factor authentication (2FA) for all customers.<br><br>
+
+      <strong>You must complete 2FA setup by November 2nd, 2025, or your account will be temporarily locked.</strong><br><br>
+
+      This is a required security measure. Failure to complete setup by the deadline will result in:<br>
+      • Inability to access your online banking<br>
+      • Inability to make transactions<br>
+      • Account services suspended until 2FA is configured<br><br>
+
+      <strong>Act now to avoid interruption to your banking services.</strong>
+    </div>
+
+    <a href="#" class="button">Complete 2FA Setup Now</a>
+
+    <div style="font-size: 12px; color: #717171; margin-top: 20px;">
+      Setup takes only 2 minutes. You'll need your phone to receive a verification code.
+    </div>
+  </div>
+
+  <div class="footer">
+    <strong style="text-transform: uppercase;">ABOUT THIS MESSAGE</strong><br><br>
+
+    This is an important security notification regarding your account. Please complete the required action before the deadline to maintain uninterrupted access.<br><br>
+
+    To protect your personal information, please don't reply to this message. SecureBank won't ask for confidential information in an email.<br><br>
+
+    If you have questions, visit securebank.example.com or contact customer service at 1-800-555-0123.<br><br>
+
+    © 2025 SecureBank Financial Services
+  </div>
+</div>
+
+</body>
+</html>
