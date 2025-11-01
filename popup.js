@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <line x1="8" y1="12" x2="16" y2="12"></line>
         </svg>
       `;
-      statusTitle.textContent = 'Scan Skipped';
+      statusTitle.textContent = 'Page skipped';
       statusDescription.textContent = 'This page type is not scanned';
 
       if (result.analysis) {

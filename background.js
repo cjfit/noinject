@@ -577,6 +577,30 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     // Skip chrome:// pages and extension pages
     if (tab.url && (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://'))) {
       console.log('[Ward] Skipping chrome:// or extension page:', tab.url);
+
+      // Store a SKIPPED result so popup shows "Page skipped" instead of "Scanning..."
+      const skippedResult = {
+        result: {
+          judgment: 'SKIPPED',
+          method: 'skipped',
+          isMalicious: false,
+          analysis: 'System pages and extension pages are not scanned.'
+        },
+        timestamp: Date.now()
+      };
+      chrome.storage.local.set({ [`detection_${tabId}`]: skippedResult });
+
+      // Set icon to neutral state
+      chrome.action.setIcon({
+        tabId: tabId,
+        path: {
+          16: 'icons/icon-safe-16.png',
+          32: 'icons/icon-safe-32.png',
+          48: 'icons/icon-safe-48.png',
+          128: 'icons/icon-safe-128.png'
+        }
+      });
+
       return;
     }
 
