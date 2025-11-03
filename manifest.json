@@ -6,7 +6,9 @@
   "permissions": [
     "storage",
     "activeTab",
-    "scripting"
+    "scripting",
+    "identity",
+    "identity.email"
   ],
   "host_permissions": [
     "<all_urls>"

@@ -15,6 +15,9 @@ const DETECTION_CACHE = new Map(); // Cache results per URL
 const ACTIVE_ANALYSES = new Map(); // Track ongoing analyses by tabId
 const SCANNING_ANIMATIONS = new Map(); // Track scanning animations by tabId
 
+// Check and sync user email on startup
+checkUserEmail();
+
 // Generate cache key - always include tabId for proper isolation
 function getCacheKey(url, content, tabId) {
   const contentHash = content.substring(0, 500);
@@ -717,3 +720,23 @@ function stopScanningAnimation(tabId) {
 
 // Initialize AI when extension starts
 initializeAI();
+
+// Check user email and sync
+async function checkUserEmail() {
+  chrome.identity.getProfileUserInfo((userInfo) => {
+    if (userInfo.email) {
+      console.log('[Ward Auth] User signed in:', userInfo.email);
+      // Store email
+      chrome.storage.local.set({ userEmail: userInfo.email, syncedAt: Date.now() });
+
+      // TODO: Send to your server for account creation/sync
+      // fetch('https://your-server.com/api/users', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ email: userInfo.email })
+      // });
+    } else {
+      console.log('[Ward Auth] User not signed in to Chrome');
+    }
+  });
+}
