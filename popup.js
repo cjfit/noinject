@@ -21,9 +21,35 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const response = await chrome.runtime.sendMessage({ action: 'checkAiAvailability' });
     if (response && !response.available) {
-      // Show unsupported banner
+      // Show appropriate message based on status
+      const banner = document.getElementById('unsupportedBanner');
+      const title = banner.querySelector('h3');
+      const description = banner.querySelector('p');
+      const note = banner.querySelector('.unsupported-note');
+
+      if (response.status === 'api-not-available') {
+        title.textContent = 'Prompt API Not Enabled';
+        description.textContent = 'Ward requires the Prompt API to be enabled in chrome://flags.';
+        note.textContent = 'Enable "Prompt API for Gemini Nano" and "Optimization Guide On Device Model" flags, then restart Chrome.';
+      } else if (response.status === 'after-download') {
+        title.textContent = 'AI Model Downloading';
+        description.innerHTML = 'Gemini Nano is downloading. This may take several minutes.<br>Ward will be ready once the download completes.';
+        note.textContent = 'Check download progress at chrome://on-device-internals';
+      } else if (response.status === 'no') {
+        title.textContent = 'Device Not Supported';
+        description.textContent = 'Ward requires on-device AI (Gemini Nano) which is not available on your device.';
+        note.textContent = 'Please uninstall Ward if your device does not meet the requirements.';
+      } else if (response.status === 'initializing') {
+        title.textContent = 'Initializing AI Model';
+        description.textContent = 'Loading Gemini Nano into memory. This should only take a few seconds.';
+        note.textContent = 'If this persists, try reloading the extension.';
+      } else {
+        title.textContent = 'AI Initialization Error';
+        description.textContent = 'Ward encountered an error while initializing the AI model.';
+        note.textContent = 'Try reloading the extension or check chrome://on-device-internals for details.';
+      }
+
       unsupportedBanner.classList.remove('hidden');
-      // Hide status card since AI is not working
       statusCard.style.display = 'none';
     }
   } catch (error) {
