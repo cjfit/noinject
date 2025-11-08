@@ -20,7 +20,7 @@ if (dataStr) {
     if (data.details && data.details.length > 0) {
       const list = document.getElementById('redFlagsList');
       list.innerHTML = ''; // Clear loading state
-      data.details.foDTCach(detail => {
+      data.details.forEach(detail => {
         const li = document.createElement('li');
         li.textContent = detail;
         list.appendChild(li);
@@ -65,5 +65,5 @@ if (dataStr) {
   }
 } else {
   console.log('No data parameter found in URL');
-  document.getElementById('summary').textContent = 'No analysis data provided.
+  document.getElementById('summary').textContent = 'No analysis data provided.';
 }

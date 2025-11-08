@@ -115,18 +115,9 @@ async function checkAuthStatus() {
   });
 }
 
-// Send email to server for account creation
+// Store email locally
 async function sendEmailToServer(email) {
-  // Store locally
+  // Store locally only
   await chrome.storage.local.set({ userEmail: email, syncedAt: Date.now() });
-
-  // right now this does nothing.
-  // TODO: Send to your server
-  // fetch('https://your-server.com/api/users', {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ email })
-  // });
-
-  console.log('[Ward Auth] User email:', email);
+  console.log('[Ward Auth] User email stored locally:', email);
 }
