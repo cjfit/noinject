@@ -11,18 +11,20 @@ export async function initializeEverydayMode() {
 
   if (!self.LanguageModel) {
     console.warn('[Ward Everyday] Prompt API not available');
-    return { analyzerSession: null, judgeSession: null };
+    return { analyzerSession: null, judgeSession: null, availability: 'api-not-available' };
   }
 
   const availability = await self.LanguageModel.availability();
+  console.log('[Ward Everyday] Availability:', availability);
 
   if (availability === 'no') {
     console.warn('[Ward Everyday] AI model not available on this device');
-    return { analyzerSession: null, judgeSession: null };
+    return { analyzerSession: null, judgeSession: null, availability: 'no' };
   }
 
   if (availability === 'after-download') {
     console.log('[Ward Everyday] AI model needs to be downloaded');
+    return { analyzerSession: null, judgeSession: null, availability: 'after-download' };
   }
 
   try {
@@ -211,11 +213,11 @@ Respond: SAFE or use the THREAT format above`
 
     console.log('[Ward Everyday] Judge session created successfully');
     console.log('[Ward Everyday] Consumer protection mode initialized with two-stage detection');
-    return { analyzerSession, judgeSession };
+    return { analyzerSession, judgeSession, availability: 'readily' };
 
   } catch (error) {
     console.error('[Ward Everyday] Failed to create sessions:', error);
-    return { analyzerSession: null, judgeSession: null };
+    return { analyzerSession: null, judgeSession: null, availability: 'error' };
   }
 }
 

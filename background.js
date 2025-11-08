@@ -11,6 +11,7 @@ console.log('[Ward] Imports check:', {
 
 let everydaySessions = { analyzerSession: null, judgeSession: null };
 let isAiAvailable = false;
+let aiAvailabilityStatus = 'initializing'; // 'initializing', 'api-not-available', 'no', 'after-download', 'readily', 'error'
 const DETECTION_CACHE = new Map(); // Cache results per URL
 const ACTIVE_ANALYSES = new Map(); // Track ongoing analyses by tabId
 const SCANNING_ANIMATIONS = new Map(); // Track scanning animations by tabId
@@ -42,11 +43,14 @@ async function initializeAI() {
       console.log('[Ward] initializeEverydayMode returned:', {
         hasAnalyzer: !!everydaySessions?.analyzerSession,
         hasJudge: !!everydaySessions?.judgeSession,
+        availability: everydaySessions?.availability,
         rawResult: everydaySessions
       });
       isAiAvailable = everydaySessions.analyzerSession !== null && everydaySessions.judgeSession !== null;
+      aiAvailabilityStatus = everydaySessions.availability || 'error';
       console.log('[Ward] Everyday mode sessions:', everydaySessions.analyzerSession ? 'Created' : 'Failed');
       console.log('[Ward] isAiAvailable:', isAiAvailable);
+      console.log('[Ward] aiAvailabilityStatus:', aiAvailabilityStatus);
     } catch (everydayInitError) {
       console.error('[Ward] ERROR calling initializeEverydayMode:', everydayInitError);
       console.error('[Ward] Error stack:', everydayInitError.stack);
@@ -347,7 +351,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   // Handle clearing cache for a specific tab (e.g., when rescan is clicked)
   if (request.action === 'checkAiAvailability') {
-    sendResponse({ available: isAiAvailable });
+    sendResponse({
+      available: isAiAvailable,
+      status: aiAvailabilityStatus
+    });
     return;
   }
 
