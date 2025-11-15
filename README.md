@@ -5,7 +5,7 @@
 
   **Protect yourself from phishing, scams, and online threats**
 
-  [![Chrome Web Store](https://img.shields.io/badge/Chrome-Extension-green?style=flat&logo=google-chrome)](https://chrome.google.com/webstore)
+  [![Chrome Web Store](https://img.shields.io/badge/Chrome-Extension-green?style=flat&logo=google-chrome)](https://chromewebstore.google.com/detail/kmpfckjcpfknbaagligkddmbimjcadpl/)
   [![License](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 </div>
 
