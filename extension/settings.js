@@ -9,15 +9,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     'autoScan',
     'showBanner',
     'scanChanges',
-    'ignoreRules'
+    'ignoreRules',
+    'activeMode'
   ]);
 
   const ignoreRules = settings.ignoreRules || [];
+  const activeMode = settings.activeMode || 'everyday';
 
   // Set toggles
   document.getElementById('autoScan').checked = settings.autoScan !== false;
   document.getElementById('showBanner').checked = settings.showBanner !== false;
   document.getElementById('scanChanges').checked = settings.scanChanges !== false;
+
+  // Set active mode UI
+  updateModeUI(activeMode);
+
+  // Mode selection handlers
+  document.getElementById('modeEveryday').addEventListener('click', () => setMode('everyday'));
+  document.getElementById('modeCompatibility').addEventListener('click', () => setMode('compatibility'));
 
   // Render ignore rules
   renderIgnoreRules(ignoreRules);
@@ -120,4 +129,27 @@ async function sendEmailToServer(email) {
   // Store locally only
   await chrome.storage.local.set({ userEmail: email, syncedAt: Date.now() });
   console.log('[Ward Auth] User email stored locally:', email);
+}
+
+function updateModeUI(mode) {
+  document.querySelectorAll('.mode-option').forEach(el => el.classList.remove('active'));
+  if (mode === 'compatibility') {
+    document.getElementById('modeCompatibility').classList.add('active');
+  } else {
+    document.getElementById('modeEveryday').classList.add('active');
+  }
+}
+
+async function setMode(mode) {
+  updateModeUI(mode);
+  await chrome.storage.local.set({ activeMode: mode });
+  
+  // Notify background script
+  try {
+    await chrome.runtime.sendMessage({ action: 'setMode', mode: mode });
+  } catch (e) {
+    console.error('Failed to notify background script:', e);
+  }
+  
+  showMessage(`Switched to ${mode === 'compatibility' ? 'Compatibility' : 'Everyday'} Mode`);
 }
