@@ -47,6 +47,7 @@ Output: "Contact [REDACTED] at [REDACTED] or [REDACTED]."
 
 Input: "<div class='user'>Name: Sarah Smith</div>"
 Output: "<div class='user'>Name: [REDACTED]</div>"
+`
         }
       ]
     });
@@ -86,6 +87,7 @@ export async function analyzeCompatibility(session, content, url = 'unknown') {
     console.log('[Ward Compatibility] Sending content for PII masking...');
     const maskedContent = await session.prompt(prompt);
 
+    console.log('[Ward Compatibility] Masked content:', maskedContent);
     console.log('[Ward Compatibility] Masking complete.');
 
     // In compatibility mode, we don't detect threats locally. 
