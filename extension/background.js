@@ -2,14 +2,14 @@
 // Handles AI-powered threat detection using Chrome's Prompt API
 
 import { initializeEverydayMode, analyzeEveryday } from './modes/everyday/detector.js';
-import { initializeCompatibilityMode, analyzeCompatibility } from './modes/compatibility/detector.js';
+import { initializeCloudMode, analyzeCloud } from './modes/cloud/detector.js';
 
 console.log('[Ward] Background script starting...');
 
 let currentSessions = null;
-let activeMode = 'everyday'; // 'everyday' or 'compatibility'
+let activeMode = 'everyday'; // 'everyday' or 'cloud'
 let isAiAvailable = false;
-let aiAvailabilityStatus = 'initializing'; // 'initializing', 'api-not-available', 'no', 'after-download', 'readily', 'error'
+let aiAvailabilityStatus = 'initializing'; // 'initializing', 'api-not-available', 'no', 'after-download', 'readily', 'error', 'configure-required'
 const DETECTION_CACHE = new Map(); // Cache results per URL
 const ACTIVE_ANALYSES = new Map(); // Track ongoing analyses by tabId
 const SCANNING_ANIMATIONS = new Map(); // Track scanning animations by tabId
@@ -29,9 +29,8 @@ async function initializeAI() {
     // Load saved mode preference
     let { activeMode: savedMode } = await chrome.storage.local.get(['activeMode']);
     
-    // Force disable compatibility mode
+    // Force disable compatibility mode if it lingers
     if (savedMode === 'compatibility') {
-      console.log('[Ward] Compatibility mode is disabled. Forcing switch to everyday mode.');
       savedMode = 'everyday';
       await chrome.storage.local.set({ activeMode: 'everyday' });
     }
@@ -40,9 +39,10 @@ async function initializeAI() {
 
     console.log(`[Ward] Initializing AI in ${activeMode} mode...`);
 
-    if (activeMode === 'compatibility') {
-      currentSessions = await initializeCompatibilityMode();
-      isAiAvailable = !!currentSessions.session;
+    if (activeMode === 'cloud') {
+      currentSessions = await initializeCloudMode();
+      // Available if initialization returned a valid URL object or availability is 'readily'
+      isAiAvailable = currentSessions.availability === 'readily';
     } else {
       // Default to everyday
       currentSessions = await initializeEverydayMode();
@@ -53,6 +53,8 @@ async function initializeAI() {
     
     if (isAiAvailable) {
       console.log(`[Ward] ✓ ${activeMode} mode initialized successfully and ready`);
+    } else if (aiAvailabilityStatus === 'configure-required') {
+      console.warn(`[Ward] Cloud mode requires configuration`);
     } else {
       console.warn(`[Ward] ✗ Failed to initialize ${activeMode} mode`);
     }
@@ -80,11 +82,11 @@ async function switchMode(newMode) {
 
 // Analyze content
 async function analyzeContent(content, url = 'unknown') {
-  if (!isAiAvailable) {
+  if (!isAiAvailable && aiAvailabilityStatus !== 'configure-required') {
     console.error('[Ward] AI not available - cannot analyze');
     return {
       isMalicious: false,
-      analysis: 'AI detection unavailable. Please enable Prompt API in chrome://flags.',
+      analysis: 'AI detection unavailable. Please check settings.',
       judgment: 'ERROR',
       method: 'error',
       mode: activeMode,
@@ -92,11 +94,22 @@ async function analyzeContent(content, url = 'unknown') {
     };
   }
 
+  if (activeMode === 'cloud' && aiAvailabilityStatus === 'configure-required') {
+    return {
+      isMalicious: false,
+      analysis: 'Cloud Mode requires configuration. Please set API URL in extension settings.',
+      judgment: 'CONFIGURATION_ERROR',
+      method: 'error',
+      mode: 'cloud',
+      contentLength: content.length
+    };
+  }
+
   try {
     console.log(`[Ward] Running analysis in ${activeMode} mode`);
     
-    if (activeMode === 'compatibility') {
-      return await analyzeCompatibility(currentSessions.session, content, url);
+    if (activeMode === 'cloud') {
+      return await analyzeCloud(currentSessions, content, url);
     } else {
       return await analyzeEveryday(
         currentSessions.analyzerSession, 

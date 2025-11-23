@@ -298,6 +298,16 @@
       color: #059669;
       display: block;
     }
+
+    .status-message.error {
+      background: #FEE2E2;
+      color: #B91C1C;
+      display: block;
+    }
+    
+    .hidden {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
@@ -339,13 +349,31 @@
           </p>
         </div>
 
-        <div class="mode-option disabled" id="modeCompatibility" style="opacity: 0.6; cursor: not-allowed; background: #F3F4F6; border-color: #E5E7EB;">
-          <div class="mode-name" style="color: #9CA3AF;">Compatibility Mode</div>
-          <div class="mode-badge" style="background: #E5E7EB; color: #9CA3AF;">Temporarily Disabled</div>
-          <p style="font-size: 12px; color: #9CA3AF; margin-top: 8px;">
-            This mode is currently unavailable while we improve our privacy masking engine.
+        <div class="mode-option" data-mode="cloud" id="modeCloud">
+          <div class="mode-name">Cloud Mode</div>
+          <div class="mode-badge advanced">Enterprise / ChromeOS</div>
+          <p style="font-size: 12px; color: #6B7280; margin-top: 8px;">
+             Offloads processing to your private Cloud Run instance. Best for low-power devices.
           </p>
         </div>
+      </div>
+    </div>
+
+    <!-- Cloud Configuration (Only visible in Cloud Mode) -->
+    <div class="card hidden" id="cloudConfigCard">
+      <h2>Cloud Settings</h2>
+      <div class="setting-row" style="display: block;">
+        <div class="setting-info" style="margin-bottom: 12px;">
+          <h3>API Endpoint URL</h3>
+          <p>The URL of your deployed Ward Cloud Function.</p>
+        </div>
+        <input type="url" id="cloudApiUrl" placeholder="https://ward-scanner-xyz.run.app" 
+               style="width: 100%; padding: 10px; border: 1px solid #D1D5DB; border-radius: 6px; font-size: 14px;">
+        <p style="font-size: 11px; color: #6B7280; margin-top: 8px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: text-bottom;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          PII (Phones, Cards, SSN) is redacted locally before being sent to this URL. Emails are sent for sender verification.
+        </p>
+        <button id="saveCloudConfig" class="btn btn-secondary" style="margin-top: 12px; width: 100%;">Save Configuration</button>
       </div>
     </div>
 

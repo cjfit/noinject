@@ -15,24 +15,38 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const ignoreRules = settings.ignoreRules || [];
   const activeMode = settings.activeMode || 'everyday';
+  const cloudApiUrl = settings.cloudApiUrl || '';
 
   // Set toggles
   document.getElementById('autoScan').checked = settings.autoScan !== false;
   document.getElementById('showBanner').checked = settings.showBanner !== false;
   document.getElementById('scanChanges').checked = settings.scanChanges !== false;
+  document.getElementById('cloudApiUrl').value = cloudApiUrl;
 
   // Set active mode UI
   updateModeUI(activeMode);
 
   // Mode selection handlers
   document.getElementById('modeEveryday').addEventListener('click', () => setMode('everyday'));
-  // document.getElementById('modeCompatibility').addEventListener('click', () => setMode('compatibility'));
+  document.getElementById('modeCloud').addEventListener('click', () => setMode('cloud'));
 
-  // Force migration if user was on compatibility mode
-  if (activeMode === 'compatibility') {
-    console.log('Compatibility mode is disabled, migrating to everyday mode');
-    setMode('everyday');
-  }
+  // Cloud Config Handler
+  document.getElementById('saveCloudConfig').addEventListener('click', async () => {
+    const url = document.getElementById('cloudApiUrl').value.trim();
+    
+    if (!url.startsWith('http')) {
+      showMessage('Invalid URL format', 'error');
+      return;
+    }
+
+    await chrome.storage.local.set({ cloudApiUrl: url });
+    showMessage('Cloud settings saved');
+    
+    // If currently in cloud mode, reload background
+    if (activeMode === 'cloud') {
+      await chrome.runtime.sendMessage({ action: 'setMode', mode: 'cloud' });
+    }
+  });
 
   // Render ignore rules
   renderIgnoreRules(ignoreRules);
@@ -139,10 +153,15 @@ async function sendEmailToServer(email) {
 
 function updateModeUI(mode) {
   document.querySelectorAll('.mode-option').forEach(el => el.classList.remove('active'));
-  if (mode === 'compatibility') {
-    document.getElementById('modeCompatibility').classList.add('active');
+  
+  const cloudCard = document.getElementById('cloudConfigCard');
+  
+  if (mode === 'cloud') {
+    document.getElementById('modeCloud').classList.add('active');
+    cloudCard.classList.remove('hidden');
   } else {
     document.getElementById('modeEveryday').classList.add('active');
+    cloudCard.classList.add('hidden');
   }
 }
 
@@ -157,5 +176,17 @@ async function setMode(mode) {
     console.error('Failed to notify background script:', e);
   }
   
-  showMessage(`Switched to ${mode === 'compatibility' ? 'Compatibility' : 'Everyday'} Mode`);
+  showMessage(`Switched to ${mode === 'cloud' ? 'Cloud' : 'Everyday'} Mode`);
+}
+
+// Helper for messages
+function showMessage(text, type = 'success') {
+  const msg = document.getElementById('statusMessage');
+  msg.textContent = text;
+  msg.className = `status-message ${type}`;
+  msg.style.display = 'block';
+
+  setTimeout(() => {
+    msg.style.display = 'none';
+  }, 3000);
 }
