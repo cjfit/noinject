@@ -27,7 +27,15 @@ function getCacheKey(url, content, tabId) {
 async function initializeAI() {
   try {
     // Load saved mode preference
-    const { activeMode: savedMode } = await chrome.storage.local.get(['activeMode']);
+    let { activeMode: savedMode } = await chrome.storage.local.get(['activeMode']);
+    
+    // Force disable compatibility mode
+    if (savedMode === 'compatibility') {
+      console.log('[Ward] Compatibility mode is disabled. Forcing switch to everyday mode.');
+      savedMode = 'everyday';
+      await chrome.storage.local.set({ activeMode: 'everyday' });
+    }
+    
     activeMode = savedMode || 'everyday';
 
     console.log(`[Ward] Initializing AI in ${activeMode} mode...`);

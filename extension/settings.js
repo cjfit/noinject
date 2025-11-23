@@ -26,7 +26,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Mode selection handlers
   document.getElementById('modeEveryday').addEventListener('click', () => setMode('everyday'));
-  document.getElementById('modeCompatibility').addEventListener('click', () => setMode('compatibility'));
+  // document.getElementById('modeCompatibility').addEventListener('click', () => setMode('compatibility'));
+
+  // Force migration if user was on compatibility mode
+  if (activeMode === 'compatibility') {
+    console.log('Compatibility mode is disabled, migrating to everyday mode');
+    setMode('everyday');
+  }
 
   // Render ignore rules
   renderIgnoreRules(ignoreRules);
