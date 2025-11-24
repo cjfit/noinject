@@ -21,7 +21,7 @@ Everything stays on your computer. No page content is sent to our servers.
 
 **What we send:**
 - **Page Content:** The text content of the page you are viewing is sent to our server.
-  - *Privacy Protection:* We **locally redact** sensitive Personally Identifiable Information (PII) like phone numbers, credit card numbers, SSNs, and IP addresses *before* the data leaves your browser.
+  - *Privacy Protection:* We **locally redact** sensitive Personally Identifiable Information (PII) like phone numbers, credit card numbers, SSNs *before* the data leaves your browser.
 - **Page URL:** The specific web address you are scanning.
 - **Installation ID:** An anonymous ID to manage request quotas.
 - **Your Email:** Sent only if you are signed in, to verify your account status.
