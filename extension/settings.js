@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   ]);
 
   const ignoreRules = settings.ignoreRules || [];
-  const activeMode = settings.activeMode || 'everyday';
+  const activeMode = settings.activeMode || 'cloud';
 
   // Set toggles
   document.getElementById('autoScan').checked = settings.autoScan !== false;
@@ -25,8 +25,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateModeUI(activeMode);
 
   // Mode selection handlers
-  document.getElementById('modeEveryday').addEventListener('click', () => setMode('everyday'));
-  document.getElementById('modeCompatibility').addEventListener('click', () => setMode('compatibility'));
+  document.getElementById('modeLocal').addEventListener('click', () => setMode('local'));
+  document.getElementById('modeCloud').addEventListener('click', () => setMode('cloud'));
 
   // Render ignore rules
   renderIgnoreRules(ignoreRules);
@@ -133,23 +133,36 @@ async function sendEmailToServer(email) {
 
 function updateModeUI(mode) {
   document.querySelectorAll('.mode-option').forEach(el => el.classList.remove('active'));
-  if (mode === 'compatibility') {
-    document.getElementById('modeCompatibility').classList.add('active');
+
+  if (mode === 'cloud') {
+    document.getElementById('modeCloud').classList.add('active');
   } else {
-    document.getElementById('modeEveryday').classList.add('active');
+    document.getElementById('modeLocal').classList.add('active');
   }
 }
 
 async function setMode(mode) {
   updateModeUI(mode);
   await chrome.storage.local.set({ activeMode: mode });
-  
+
   // Notify background script
   try {
     await chrome.runtime.sendMessage({ action: 'setMode', mode: mode });
   } catch (e) {
     console.error('Failed to notify background script:', e);
   }
-  
-  showMessage(`Switched to ${mode === 'compatibility' ? 'Compatibility' : 'Everyday'} Mode`);
+
+  showMessage(`Switched to ${mode === 'cloud' ? 'Cloud' : 'Local'} Mode`);
+}
+
+// Helper for messages
+function showMessage(text, type = 'success') {
+  const msg = document.getElementById('statusMessage');
+  msg.textContent = text;
+  msg.className = `status-message ${type}`;
+  msg.style.display = 'block';
+
+  setTimeout(() => {
+    msg.style.display = 'none';
+  }, 3000);
 }

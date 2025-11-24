@@ -1,18 +1,21 @@
 // Ward Background Service Worker
 // Handles AI-powered threat detection using Chrome's Prompt API
 
-import { initializeEverydayMode, analyzeEveryday } from './modes/everyday/detector.js';
-import { initializeCompatibilityMode, analyzeCompatibility } from './modes/compatibility/detector.js';
+import { initializeLocalMode, analyzeLocal } from './modes/local/detector.js';
+import { initializeCloudMode, analyzeCloud } from './modes/cloud/detector.js';
 
 console.log('[Ward] Background script starting...');
 
 let currentSessions = null;
-let activeMode = 'everyday'; // 'everyday' or 'compatibility'
+let activeMode = 'cloud'; // 'local' or 'cloud'
 let isAiAvailable = false;
-let aiAvailabilityStatus = 'initializing'; // 'initializing', 'api-not-available', 'no', 'after-download', 'readily', 'error'
+let aiAvailabilityStatus = 'initializing'; // 'initializing', 'api-not-available', 'no', 'after-download', 'readily', 'error', 'configure-required'
 const DETECTION_CACHE = new Map(); // Cache results per URL
 const ACTIVE_ANALYSES = new Map(); // Track ongoing analyses by tabId
 const SCANNING_ANIMATIONS = new Map(); // Track scanning animations by tabId
+
+// Generate and store persistent installId on first run
+generateInstallId();
 
 // Check and sync user email on startup
 checkUserEmail();
@@ -27,17 +30,25 @@ function getCacheKey(url, content, tabId) {
 async function initializeAI() {
   try {
     // Load saved mode preference
-    const { activeMode: savedMode } = await chrome.storage.local.get(['activeMode']);
-    activeMode = savedMode || 'everyday';
+    let { activeMode: savedMode } = await chrome.storage.local.get(['activeMode']);
+    
+    // Force disable compatibility mode if it lingers
+    if (savedMode === 'compatibility') {
+      savedMode = 'cloud';
+      await chrome.storage.local.set({ activeMode: 'cloud' });
+    }
+
+    activeMode = savedMode || 'cloud';
 
     console.log(`[Ward] Initializing AI in ${activeMode} mode...`);
 
-    if (activeMode === 'compatibility') {
-      currentSessions = await initializeCompatibilityMode();
-      isAiAvailable = !!currentSessions.session;
+    if (activeMode === 'cloud') {
+      currentSessions = await initializeCloudMode();
+      // Available if initialization returned a valid URL object or availability is 'readily'
+      isAiAvailable = currentSessions.availability === 'readily';
     } else {
-      // Default to everyday
-      currentSessions = await initializeEverydayMode();
+      // Default to local
+      currentSessions = await initializeLocalMode();
       isAiAvailable = !!currentSessions.analyzerSession && !!currentSessions.judgeSession;
     }
 
@@ -45,6 +56,8 @@ async function initializeAI() {
     
     if (isAiAvailable) {
       console.log(`[Ward] ✓ ${activeMode} mode initialized successfully and ready`);
+    } else if (aiAvailabilityStatus === 'configure-required') {
+      console.warn(`[Ward] Cloud mode requires configuration`);
     } else {
       console.warn(`[Ward] ✗ Failed to initialize ${activeMode} mode`);
     }
@@ -72,11 +85,11 @@ async function switchMode(newMode) {
 
 // Analyze content
 async function analyzeContent(content, url = 'unknown') {
-  if (!isAiAvailable) {
+  if (!isAiAvailable && aiAvailabilityStatus !== 'configure-required') {
     console.error('[Ward] AI not available - cannot analyze');
     return {
       isMalicious: false,
-      analysis: 'AI detection unavailable. Please enable Prompt API in chrome://flags.',
+      analysis: 'AI detection unavailable. Please check settings.',
       judgment: 'ERROR',
       method: 'error',
       mode: activeMode,
@@ -84,16 +97,27 @@ async function analyzeContent(content, url = 'unknown') {
     };
   }
 
+  if (activeMode === 'cloud' && aiAvailabilityStatus === 'configure-required') {
+    return {
+      isMalicious: false,
+      analysis: 'Cloud Mode requires configuration. Please set API URL in extension settings.',
+      judgment: 'CONFIGURATION_ERROR',
+      method: 'error',
+      mode: 'cloud',
+      contentLength: content.length
+    };
+  }
+
   try {
     console.log(`[Ward] Running analysis in ${activeMode} mode`);
     
-    if (activeMode === 'compatibility') {
-      return await analyzeCompatibility(currentSessions.session, content, url);
+    if (activeMode === 'cloud') {
+      return await analyzeCloud(currentSessions, content, url);
     } else {
-      return await analyzeEveryday(
-        currentSessions.analyzerSession, 
-        currentSessions.judgeSession, 
-        content, 
+      return await analyzeLocal(
+        currentSessions.analyzerSession,
+        currentSessions.judgeSession,
+        content,
         url
       );
     }
@@ -233,7 +257,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
 
         sendResponse(cached);
-        updateBadge(sender.tab.id, cached.isMalicious);
+        updateBadge(sender.tab.id, cached.isMalicious, cached);
         return;
       }
 
@@ -307,7 +331,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           DETECTION_CACHE.set(cacheKey, result);
 
           // Update badge based on result
-          updateBadge(tabId, result.isMalicious);
+          updateBadge(tabId, result.isMalicious, result);
 
           // Store detection result for this tab
           chrome.storage.local.set({
@@ -505,8 +529,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 // Update extension badge
-function updateBadge(tabId, isMalicious) {
-  if (isMalicious) {
+function updateBadge(tabId, isMalicious, result = null) {
+  // Check for quota exceeded
+  if (result && result.judgment === 'QUOTA_EXCEEDED') {
+    chrome.action.setBadgeText({ text: 'X', tabId });
+    chrome.action.setBadgeBackgroundColor({ color: '#DC2626', tabId }); // Red
+    chrome.action.setIcon({
+      tabId,
+      path: {
+        16: 'icons/icon-danger-16.png',
+        32: 'icons/icon-danger-32.png',
+        48: 'icons/icon-danger-48.png',
+        128: 'icons/icon-danger-128.png'
+      }
+    });
+  } else if (isMalicious) {
     chrome.action.setBadgeText({ text: '!', tabId });
     chrome.action.setBadgeBackgroundColor({ color: '#DC2626', tabId }); // Red
     chrome.action.setIcon({
@@ -730,8 +767,29 @@ function stopScanningAnimation(tabId) {
   }
 }
 
+// Show onboarding on first install
+chrome.runtime.onInstalled.addListener(async (details) => {
+  if (details.reason === 'install') {
+    // Open onboarding page once
+    chrome.tabs.create({ url: 'onboarding.html' });
+  }
+});
+
 // Initialize AI when extension starts
 initializeAI();
+
+// Generate and store persistent installId
+async function generateInstallId() {
+  const { installId } = await chrome.storage.local.get(['installId']);
+
+  if (!installId) {
+    const newInstallId = crypto.randomUUID();
+    await chrome.storage.local.set({ installId: newInstallId });
+    console.log('[Ward Auth] Generated new installId:', newInstallId);
+  } else {
+    console.log('[Ward Auth] Using existing installId:', installId);
+  }
+}
 
 // Check user email
 async function checkUserEmail() {
