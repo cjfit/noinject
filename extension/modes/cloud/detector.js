@@ -3,23 +3,14 @@
 
 import { redactPII } from '../../utils/redactor.js';
 
+const CLOUD_API_URL = 'https://us-central1-ward-479122.cloudfunctions.net/ward-scanner';
+
 export async function initializeCloudMode() {
   console.log('[Ward Cloud] Initializing Cloud Mode...');
-  
-  // Check if API URL is configured
-  const { cloudApiUrl } = await chrome.storage.local.get(['cloudApiUrl']);
-  
-  if (!cloudApiUrl) {
-    console.warn('[Ward Cloud] No API URL configured');
-    return { availability: 'configure-required' };
-  }
 
   try {
-    // Basic health check
-    // We'll just assume it's ready if the URL is there to save startup time,
-    // or we could do a quick fetch to root if we wanted to be sure.
-    console.log('[Ward Cloud] Cloud endpoint configured:', cloudApiUrl);
-    return { availability: 'readily', apiUrl: cloudApiUrl };
+    console.log('[Ward Cloud] Using cloud endpoint:', CLOUD_API_URL);
+    return { availability: 'readily', apiUrl: CLOUD_API_URL };
   } catch (error) {
     console.error('[Ward Cloud] Initialization failed:', error);
     return { availability: 'error' };
@@ -28,36 +19,35 @@ export async function initializeCloudMode() {
 
 export async function analyzeCloud(sessionData, content, url = 'unknown') {
   console.log('[Ward Cloud] analyzeCloud called');
-  
-  const apiUrl = sessionData?.apiUrl;
-  
-  if (!apiUrl) {
-    return {
-      isMalicious: false,
-      analysis: 'Cloud API URL not configured. Please go to Settings.',
-      judgment: 'CONFIGURATION_ERROR',
-      method: 'error',
-      mode: 'cloud',
-      contentLength: content.length
-    };
-  }
+
+  const apiUrl = sessionData?.apiUrl || CLOUD_API_URL;
 
   try {
-    // 1. Redact PII locally
+    // 1. Get auth credentials
+    const { installId, userEmail } = await chrome.storage.local.get(['installId', 'userEmail']);
+
+    // 2. Redact PII locally
     console.log('[Ward Cloud] Redacting PII...');
     const redactedContent = redactPII(content);
-    
-    // 2. Send to Cloud
+
+    // 3. Send to Cloud with auth headers
     console.log(`[Ward Cloud] Sending ${redactedContent.length} chars to ${apiUrl}...`);
-    
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
+    const headers = {
+      'Content-Type': 'application/json',
+      'X-Ward-Install-ID': installId || 'unknown'
+    };
+
+    if (userEmail) {
+      headers['X-Ward-User-Email'] = userEmail;
+    }
+
     const response = await fetch(apiUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: headers,
       body: JSON.stringify({
         content: redactedContent,
         url: url
@@ -66,6 +56,20 @@ export async function analyzeCloud(sessionData, content, url = 'unknown') {
     });
 
     clearTimeout(timeoutId);
+
+    // Handle quota exceeded
+    if (response.status === 429) {
+      const errorData = await response.json();
+      return {
+        isMalicious: false,
+        analysis: 'Quota exceeded',
+        judgment: 'QUOTA_EXCEEDED',
+        method: 'quota-error',
+        mode: 'cloud',
+        contentLength: content.length,
+        quota: errorData.quota
+      };
+    }
 
     if (!response.ok) {
       throw new Error(`Cloud API returned ${response.status}: ${response.statusText}`);

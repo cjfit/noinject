@@ -14,6 +14,9 @@ const DETECTION_CACHE = new Map(); // Cache results per URL
 const ACTIVE_ANALYSES = new Map(); // Track ongoing analyses by tabId
 const SCANNING_ANIMATIONS = new Map(); // Track scanning animations by tabId
 
+// Generate and store persistent installId on first run
+generateInstallId();
+
 // Check and sync user email on startup
 checkUserEmail();
 
@@ -254,7 +257,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
 
         sendResponse(cached);
-        updateBadge(sender.tab.id, cached.isMalicious);
+        updateBadge(sender.tab.id, cached.isMalicious, cached);
         return;
       }
 
@@ -328,7 +331,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           DETECTION_CACHE.set(cacheKey, result);
 
           // Update badge based on result
-          updateBadge(tabId, result.isMalicious);
+          updateBadge(tabId, result.isMalicious, result);
 
           // Store detection result for this tab
           chrome.storage.local.set({
@@ -526,8 +529,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 // Update extension badge
-function updateBadge(tabId, isMalicious) {
-  if (isMalicious) {
+function updateBadge(tabId, isMalicious, result = null) {
+  // Check for quota exceeded
+  if (result && result.judgment === 'QUOTA_EXCEEDED') {
+    chrome.action.setBadgeText({ text: 'X', tabId });
+    chrome.action.setBadgeBackgroundColor({ color: '#DC2626', tabId }); // Red
+    chrome.action.setIcon({
+      tabId,
+      path: {
+        16: 'icons/icon-danger-16.png',
+        32: 'icons/icon-danger-32.png',
+        48: 'icons/icon-danger-48.png',
+        128: 'icons/icon-danger-128.png'
+      }
+    });
+  } else if (isMalicious) {
     chrome.action.setBadgeText({ text: '!', tabId });
     chrome.action.setBadgeBackgroundColor({ color: '#DC2626', tabId }); // Red
     chrome.action.setIcon({
@@ -751,8 +767,29 @@ function stopScanningAnimation(tabId) {
   }
 }
 
+// Show onboarding on first install
+chrome.runtime.onInstalled.addListener(async (details) => {
+  if (details.reason === 'install') {
+    // Open onboarding page once
+    chrome.tabs.create({ url: 'onboarding.html' });
+  }
+});
+
 // Initialize AI when extension starts
 initializeAI();
+
+// Generate and store persistent installId
+async function generateInstallId() {
+  const { installId } = await chrome.storage.local.get(['installId']);
+
+  if (!installId) {
+    const newInstallId = crypto.randomUUID();
+    await chrome.storage.local.set({ installId: newInstallId });
+    console.log('[Ward Auth] Generated new installId:', newInstallId);
+  } else {
+    console.log('[Ward Auth] Using existing installId:', installId);
+  }
+}
 
 // Check user email
 async function checkUserEmail() {

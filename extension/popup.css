@@ -51,6 +51,81 @@ body {
   font-weight: 500;
 }
 
+/* Setup Required Banner */
+.setup-banner {
+  background: #FFFBEB;
+  border: 2px solid #FCD34D;
+  border-left: 4px solid #F59E0B;
+  padding: 16px;
+  margin: 16px;
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.setup-banner.hidden {
+  display: none;
+}
+
+.setup-icon {
+  font-size: 24px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.setup-content {
+  flex: 1;
+}
+
+.setup-content h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #92400E;
+  margin-bottom: 8px;
+}
+
+.setup-content p {
+  font-size: 13px;
+  color: #78350F;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.setup-btn {
+  background: #F59E0B;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.2s;
+}
+
+.setup-btn:hover {
+  background: #D97706;
+}
+
+.setup-note {
+  font-size: 12px !important;
+  color: #92400E !important;
+  margin-top: 12px !important;
+  margin-bottom: 0 !important;
+}
+
+.setup-note a {
+  color: #F59E0B;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.setup-note a:hover {
+  text-decoration: underline;
+}
+
 /* Unsupported Device Banner */
 .unsupported-banner {
   background: #FEF2F2;

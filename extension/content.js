@@ -305,6 +305,90 @@ function showWarningBanner(analysisResult) {
   });
 }
 
+// Show quota exceeded banner
+function showQuotaExceededBanner(analysisResult) {
+  // Check if banner already exists
+  if (document.getElementById('ward-warning-banner')) {
+    return;
+  }
+
+  const quota = analysisResult.quota || { current: '?', limit: '?', tier: 'unknown' };
+  const tierName = quota.tier === 'anonymous' ? 'Free (Anonymous)' :
+                   quota.tier === 'free' ? 'Free (Signed In)' : 'Pro';
+
+  const banner = document.createElement('div');
+  banner.id = 'ward-warning-banner';
+  banner.innerHTML = `
+    <div style="
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: #DC2626;
+      color: white;
+      padding: 16px 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      z-index: 2147483647;
+      animation: slideDown 0.3s ease-out;
+    ">
+      <div style="display: flex; align-items: center; gap: 16px; max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="15" y1="9" x2="9" y2="15"></line>
+          <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>
+        <div style="flex: 1;">
+          <div style="font-weight: 600; margin-bottom: 4px; font-size: 15px;">
+            Ward Quota Exceeded
+          </div>
+          <div style="font-size: 13px; opacity: 0.95;">
+            You've used ${quota.current} of ${quota.limit} scans today (${tierName} tier).
+            ${quota.tier === 'anonymous' ? 'Sign into Chrome for more scans, or upgrade to Pro for unlimited.' :
+              quota.tier === 'free' ? 'Upgrade to Pro for unlimited scans.' :
+              'Your quota resets tomorrow.'}
+          </div>
+        </div>
+        <button id="ward-close-banner" style="
+          background: rgba(255, 255, 255, 0.2);
+          border: none;
+          color: white;
+          padding: 6px 12px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 12px;
+          font-weight: 500;
+          transition: background 0.2s;
+          flex-shrink: 0;
+        " onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+           onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+          Dismiss
+        </button>
+      </div>
+    </div>
+    <style>
+      @keyframes slideDown {
+        from {
+          transform: translateY(-100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+    </style>
+  `;
+
+  document.body.appendChild(banner);
+
+  // Add close button handler
+  document.getElementById('ward-close-banner').addEventListener('click', () => {
+    banner.remove();
+  });
+}
+
 // Track if analysis is in progress to prevent duplicate requests
 let analysisInProgress = false;
 let lastAnalyzedContent = '';
@@ -445,7 +529,11 @@ async function analyzePage() {
       judgment: response.judgment
     });
 
-    if (response.isMalicious) {
+    // Check for quota exceeded
+    if (response.judgment === 'QUOTA_EXCEEDED') {
+      console.log('[Ward] QUOTA EXCEEDED:', response.quota);
+      showQuotaExceededBanner(response);
+    } else if (response.isMalicious) {
       console.log('[Ward] THREAT DETECTED on this page:', {
         analysis: response.analysis,
         judgment: response.judgment

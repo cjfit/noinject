@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Ward",
   "version": "1.0.0",
-  "description": "AI-powered protection against scams, phishing, and online threats. Offline and private.",
+  "description": "AI-powered protection against scams, phishing, and online threats. Choose cloud or local processing.",
   "permissions": [
     "storage",
     "activeTab",
