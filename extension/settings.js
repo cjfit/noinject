@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   ]);
 
   const ignoreRules = settings.ignoreRules || [];
-  const activeMode = settings.activeMode || 'everyday';
+  const activeMode = settings.activeMode || 'cloud';
 
   // Set toggles
   document.getElementById('autoScan').checked = settings.autoScan !== false;
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateModeUI(activeMode);
 
   // Mode selection handlers
-  document.getElementById('modeEveryday').addEventListener('click', () => setMode('everyday'));
+  document.getElementById('modeLocal').addEventListener('click', () => setMode('local'));
   document.getElementById('modeCloud').addEventListener('click', () => setMode('cloud'));
 
   // Render ignore rules
@@ -137,22 +137,22 @@ function updateModeUI(mode) {
   if (mode === 'cloud') {
     document.getElementById('modeCloud').classList.add('active');
   } else {
-    document.getElementById('modeEveryday').classList.add('active');
+    document.getElementById('modeLocal').classList.add('active');
   }
 }
 
 async function setMode(mode) {
   updateModeUI(mode);
   await chrome.storage.local.set({ activeMode: mode });
-  
+
   // Notify background script
   try {
     await chrome.runtime.sendMessage({ action: 'setMode', mode: mode });
   } catch (e) {
     console.error('Failed to notify background script:', e);
   }
-  
-  showMessage(`Switched to ${mode === 'cloud' ? 'Cloud' : 'Everyday'} Mode`);
+
+  showMessage(`Switched to ${mode === 'cloud' ? 'Cloud' : 'Local'} Mode`);
 }
 
 // Helper for messages

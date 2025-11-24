@@ -1,13 +1,13 @@
 // Ward Background Service Worker
 // Handles AI-powered threat detection using Chrome's Prompt API
 
-import { initializeEverydayMode, analyzeEveryday } from './modes/everyday/detector.js';
+import { initializeLocalMode, analyzeLocal } from './modes/local/detector.js';
 import { initializeCloudMode, analyzeCloud } from './modes/cloud/detector.js';
 
 console.log('[Ward] Background script starting...');
 
 let currentSessions = null;
-let activeMode = 'everyday'; // 'everyday' or 'cloud'
+let activeMode = 'cloud'; // 'local' or 'cloud'
 let isAiAvailable = false;
 let aiAvailabilityStatus = 'initializing'; // 'initializing', 'api-not-available', 'no', 'after-download', 'readily', 'error', 'configure-required'
 const DETECTION_CACHE = new Map(); // Cache results per URL
@@ -34,11 +34,11 @@ async function initializeAI() {
     
     // Force disable compatibility mode if it lingers
     if (savedMode === 'compatibility') {
-      savedMode = 'everyday';
-      await chrome.storage.local.set({ activeMode: 'everyday' });
+      savedMode = 'cloud';
+      await chrome.storage.local.set({ activeMode: 'cloud' });
     }
-    
-    activeMode = savedMode || 'everyday';
+
+    activeMode = savedMode || 'cloud';
 
     console.log(`[Ward] Initializing AI in ${activeMode} mode...`);
 
@@ -47,8 +47,8 @@ async function initializeAI() {
       // Available if initialization returned a valid URL object or availability is 'readily'
       isAiAvailable = currentSessions.availability === 'readily';
     } else {
-      // Default to everyday
-      currentSessions = await initializeEverydayMode();
+      // Default to local
+      currentSessions = await initializeLocalMode();
       isAiAvailable = !!currentSessions.analyzerSession && !!currentSessions.judgeSession;
     }
 
@@ -114,10 +114,10 @@ async function analyzeContent(content, url = 'unknown') {
     if (activeMode === 'cloud') {
       return await analyzeCloud(currentSessions, content, url);
     } else {
-      return await analyzeEveryday(
-        currentSessions.analyzerSession, 
-        currentSessions.judgeSession, 
-        content, 
+      return await analyzeLocal(
+        currentSessions.analyzerSession,
+        currentSessions.judgeSession,
+        content,
         url
       );
     }

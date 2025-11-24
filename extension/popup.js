@@ -13,23 +13,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const ignoreUrlBtn = document.getElementById('ignoreUrlBtn');
   const ignoreDomainBtn = document.getElementById('ignoreDomainBtn');
   const unsupportedBanner = document.getElementById('unsupportedBanner');
-  const setupBanner = document.getElementById('setupBanner');
-  const setupBtn = document.getElementById('setupBtn');
-
-  // Check if onboarding is completed
-  const { onboardingCompleted } = await chrome.storage.local.get(['onboardingCompleted']);
-  if (!onboardingCompleted) {
-    // Show setup banner and hide everything else
-    setupBanner.classList.remove('hidden');
-    statusCard.style.display = 'none';
-
-    // Handle setup button click
-    setupBtn.addEventListener('click', () => {
-      chrome.tabs.create({ url: 'onboarding.html' });
-    });
-
-    return; // Stop here, don't load the rest of the popup
-  }
 
   // Get current tab
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });

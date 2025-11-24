@@ -1,29 +1,29 @@
-// Everyday Mode - Consumer Protection
+// Local Mode - Consumer Protection
 // Two-stage AI detection focused on phishing, scams, and common threats
 // VERSION: 2.0 - Two-stage detection
 
-export async function initializeEverydayMode() {
-  console.log('[Ward Everyday] ========================================');
-  console.log('[Ward Everyday] VERSION 2.0 TWO-STAGE SYSTEM LOADING');
-  console.log('[Ward Everyday] ========================================');
-  console.log('[Ward Everyday] *** initializeEverydayMode FUNCTION CALLED ***');
-  console.log('[Ward Everyday] Initializing consumer protection mode...');
+export async function initializeLocalMode() {
+  console.log('[Ward Local] ========================================');
+  console.log('[Ward Local] VERSION 2.0 TWO-STAGE SYSTEM LOADING');
+  console.log('[Ward Local] ========================================');
+  console.log('[Ward Local] *** initializeLocalMode FUNCTION CALLED ***');
+  console.log('[Ward Local] Initializing consumer protection mode...');
 
   if (!self.LanguageModel) {
-    console.warn('[Ward Everyday] Prompt API not available');
+    console.warn('[Ward Local] Prompt API not available');
     return { analyzerSession: null, judgeSession: null, availability: 'api-not-available' };
   }
 
   const availability = await self.LanguageModel.availability();
-  console.log('[Ward Everyday] Availability:', availability);
+  console.log('[Ward Local] Availability:', availability);
 
   if (availability === 'no') {
-    console.warn('[Ward Everyday] AI model not available on this device');
+    console.warn('[Ward Local] AI model not available on this device');
     return { analyzerSession: null, judgeSession: null, availability: 'no' };
   }
 
   if (availability === 'after-download') {
-    console.log('[Ward Everyday] AI model needs to be downloaded');
+    console.log('[Ward Local] AI model needs to be downloaded');
     return { analyzerSession: null, judgeSession: null, availability: 'after-download' };
   }
 
@@ -108,7 +108,7 @@ Reply with ONE WORD ONLY: INBOX, SAFE, or SCAM`
       ]
     });
 
-    console.log('[Ward Everyday] Analyzer session created successfully');
+    console.log('[Ward Local] Analyzer session created successfully');
 
     // Stage 2: Judge session - validates if it's a real threat or false positive
     const judgeSession = await self.LanguageModel.create({
@@ -213,18 +213,18 @@ Respond: SAFE or use the THREAT format above`
       ]
     });
 
-    console.log('[Ward Everyday] Judge session created successfully');
-    console.log('[Ward Everyday] Consumer protection mode initialized with two-stage detection');
+    console.log('[Ward Local] Judge session created successfully');
+    console.log('[Ward Local] Consumer protection mode initialized with two-stage detection');
     return { analyzerSession, judgeSession, availability: 'readily' };
 
   } catch (error) {
-    console.error('[Ward Everyday] Failed to create sessions:', error);
+    console.error('[Ward Local] Failed to create sessions:', error);
     return { analyzerSession: null, judgeSession: null, availability: 'error' };
   }
 }
 
-export async function analyzeEveryday(analyzerSession, judgeSession, content, url = 'unknown') {
-  console.log('[Ward Everyday] analyzeEveryday called with:', {
+export async function analyzeLocal(analyzerSession, judgeSession, content, url = 'unknown') {
+  console.log('[Ward Local] analyzeLocal called with:', {
     hasAnalyzerSession: !!analyzerSession,
     hasJudgeSession: !!judgeSession,
     contentLength: content.length,
@@ -232,7 +232,7 @@ export async function analyzeEveryday(analyzerSession, judgeSession, content, ur
   });
 
   if (!analyzerSession || !judgeSession) {
-    console.error('[Ward Everyday] Missing sessions:', {
+    console.error('[Ward Local] Missing sessions:', {
       analyzerSession: !!analyzerSession,
       judgeSession: !!judgeSession
     });
@@ -241,7 +241,7 @@ export async function analyzeEveryday(analyzerSession, judgeSession, content, ur
       analysis: 'AI detection unavailable. Please enable Prompt API in chrome://flags.',
       judgment: 'ERROR',
       method: 'error',
-      mode: 'everyday',
+      mode: 'local',
       contentLength: content.length
     };
   }
@@ -255,11 +255,11 @@ export async function analyzeEveryday(analyzerSession, judgeSession, content, ur
 
     const analysisPrompt = `Classify this content:\n\n${trimmedContent}`;
 
-    console.log('[Ward Everyday Stage 1] ========== FULL DOM SENT TO ANALYZER ==========');
+    console.log('[Ward Local Stage 1] ========== FULL DOM SENT TO ANALYZER ==========');
     console.log(trimmedContent);
-    console.log('[Ward Everyday Stage 1] ========== END DOM ==========');
+    console.log('[Ward Local Stage 1] ========== END DOM ==========');
 
-    console.log('[Ward Everyday Stage 1] Classifying content:', {
+    console.log('[Ward Local Stage 1] Classifying content:', {
       contentLength: trimmedContent.length,
       preview: trimmedContent.substring(0, 150) + '...'
     });
@@ -277,26 +277,26 @@ export async function analyzeEveryday(analyzerSession, judgeSession, content, ur
       classification = classificationLines[0].trim().toUpperCase();
       reasoning = classificationLines.length > 1 ? classificationLines.slice(1).join(' ').trim() : '';
 
-      console.log('[Ward Everyday Stage 1] Classification complete:', {
+      console.log('[Ward Local Stage 1] Classification complete:', {
         classification: classification,
         reasoning: reasoning,
         classificationLength: classification.length
       });
     } catch (stage1Error) {
-      console.error('[Ward Everyday Stage 1] FAILED:', stage1Error);
+      console.error('[Ward Local Stage 1] FAILED:', stage1Error);
       throw stage1Error;
     }
 
     // If classified as INBOX, skip judge and return safe immediately (no need to validate inbox views)
     if (classification.includes('INBOX')) {
-      console.log('[Ward Everyday] Stage 1 marked as INBOX, skipping validation');
+      console.log('[Ward Local] Stage 1 marked as INBOX, skipping validation');
 
       return {
         isMalicious: false,
         analysis: reasoning || 'Content appears to be an inbox or message feed with multiple items',
         judgment: 'SKIPPED',
         method: 'skipped',
-        mode: 'everyday',
+        mode: 'local',
         contentLength: content.length,
         classification: 'INBOX',
         reasoning: reasoning
@@ -305,9 +305,9 @@ export async function analyzeEveryday(analyzerSession, judgeSession, content, ur
 
     // For SAFE or SCAM, send to Stage 2 judge for validation
     const classificationLabel = classification.includes('SCAM') ? 'potential scam' : 'safe content';
-    console.log(`[Ward Everyday] Stage 1 classified as ${classification.toUpperCase()}, sending to judge for validation...`);
-    console.log('[Ward Everyday] Stage 1 classification:', classification);
-    console.log('[Ward Everyday] Stage 1 reasoning:', reasoning);
+    console.log(`[Ward Local] Stage 1 classified as ${classification.toUpperCase()}, sending to judge for validation...`);
+    console.log('[Ward Local] Stage 1 classification:', classification);
+    console.log('[Ward Local] Stage 1 reasoning:', reasoning);
 
     let judgment;
     try {
@@ -327,10 +327,10 @@ ${trimmedContent.substring(0, 1000)}
 
 Is this a real THREAT or SAFE?`;
 
-      console.log('[Ward Everyday Stage 2] ===== FULL JUDGE INPUT =====');
-      console.log('[Ward Everyday Stage 2] Prompt being sent to judge:');
+      console.log('[Ward Local Stage 2] ===== FULL JUDGE INPUT =====');
+      console.log('[Ward Local Stage 2] Prompt being sent to judge:');
       console.log(judgmentPrompt);
-      console.log('[Ward Everyday Stage 2] ===== END JUDGE INPUT =====');
+      console.log('[Ward Local Stage 2] ===== END JUDGE INPUT =====');
 
       const judgmentPromiseRaw = judgeSession.prompt(judgmentPrompt);
 
@@ -340,12 +340,12 @@ Is this a real THREAT or SAFE?`;
 
       judgment = await Promise.race([judgmentPromiseRaw, timeoutPromise2]);
 
-      console.log('[Ward Everyday Stage 2] ===== FULL JUDGE OUTPUT =====');
-      console.log('[Ward Everyday Stage 2] Raw judgment response:');
+      console.log('[Ward Local Stage 2] ===== FULL JUDGE OUTPUT =====');
+      console.log('[Ward Local Stage 2] Raw judgment response:');
       console.log(judgment);
-      console.log('[Ward Everyday Stage 2] ===== END JUDGE OUTPUT =====');
+      console.log('[Ward Local Stage 2] ===== END JUDGE OUTPUT =====');
     } catch (stage2Error) {
-      console.error('[Ward Everyday Stage 2] FAILED:', stage2Error);
+      console.error('[Ward Local Stage 2] FAILED:', stage2Error);
       throw stage2Error;
     }
 
@@ -354,14 +354,14 @@ Is this a real THREAT or SAFE?`;
     const firstLine = judgment.trim().split('\n')[0].trim().replace(/\*\*/g, '').toUpperCase();
     const isThreat = firstLine.startsWith('THREAT');
 
-    console.log('[Ward Everyday Stage 2] Final decision:', {
+    console.log('[Ward Local Stage 2] Final decision:', {
       rawJudgment: judgment.trim(),
       firstLine: firstLine,
       finalDecision: isThreat ? 'THREAT' : 'SAFE'
     });
 
     if (isThreat) {
-      console.log('[Ward Everyday] THREAT DETECTED:', {
+      console.log('[Ward Local] THREAT DETECTED:', {
         classification: classification,
         verdict: judgment.trim(),
         contentSample: trimmedContent.substring(0, 500)
@@ -373,13 +373,13 @@ Is this a real THREAT or SAFE?`;
       analysis: isThreat ? 'Potential scam or phishing attempt detected' : 'False positive - content is safe',
       judgment: judgment.trim(),
       method: 'ai',
-      mode: 'everyday',
+      mode: 'local',
       contentLength: content.length
     };
 
   } catch (error) {
-    console.error('[Ward Everyday] Analysis failed:', error);
-    console.error('[Ward Everyday] Error details:', {
+    console.error('[Ward Local] Analysis failed:', error);
+    console.error('[Ward Local] Error details:', {
       message: error.message,
       stack: error.stack,
       name: error.name
@@ -389,7 +389,7 @@ Is this a real THREAT or SAFE?`;
       analysis: 'Page scan incomplete. No immediate threats detected in visible content.',
       judgment: 'ERROR',
       method: 'error',
-      mode: 'everyday',
+      mode: 'local',
       contentLength: content.length
     };
   }
